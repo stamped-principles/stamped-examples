@@ -1,0 +1,106 @@
+{
+  "sources": 100,
+  "with_reference": 48,
+  "without_reference": 52,
+  "interval_probability": 0.68,
+  "method": "inverted central Gaussian parallax confidence interval",
+  "systematics_included": false,
+  "largest_offsets": [
+    {
+      "source_id": "6412595290592307840",
+      "original_pc": 3.6384,
+      "distance_pc": 3.638438981826665,
+      "lower_pc": 3.637180658209866,
+      "upper_pc": 3.6396981764072405,
+      "fractional_parallax_error": 0.0003478893068629667,
+      "distance_gspphot": "3.6481",
+      "distance_gspphot_lower": "3.6389",
+      "distance_gspphot_upper": "3.6698",
+      "reference_offset_pct": 0.2655264585056827
+    },
+    {
+      "source_id": "1872046609345556480",
+      "original_pc": 3.4966,
+      "distance_pc": 3.4965652573897277,
+      "lower_pc": 3.4958371652726306,
+      "upper_pc": 3.497293652855373,
+      "fractional_parallax_error": 0.0002094347482601446,
+      "distance_gspphot": "3.4904",
+      "distance_gspphot_lower": "3.4792",
+      "distance_gspphot_upper": "3.4946",
+      "reference_offset_pct": -0.17632324684052625
+    },
+    {
+      "source_id": "3136952686035250688",
+      "original_pc": 5.9889,
+      "distance_pc": 5.988852474811047,
+      "lower_pc": 5.987627869738591,
+      "upper_pc": 5.990077580904741,
+      "fractional_parallax_error": 0.00020566238033125454,
+      "distance_gspphot": "5.9792",
+      "distance_gspphot_lower": "5.9728",
+      "distance_gspphot_upper": "5.994",
+      "reference_offset_pct": -0.16117402877505738
+    },
+    {
+      "source_id": "3316364602541746048",
+      "original_pc": 5.208,
+      "distance_pc": 5.207968173719361,
+      "lower_pc": 5.207133288316341,
+      "upper_pc": 5.208803326887913,
+      "fractional_parallax_error": 0.0001612284870407309,
+      "distance_gspphot": "5.1996",
+      "distance_gspphot_lower": "5.1928",
+      "distance_gspphot_upper": "5.2117",
+      "reference_offset_pct": -0.16068020080438616
+    },
+    {
+      "source_id": "2603090003484152064",
+      "original_pc": 4.6721,
+      "distance_pc": 4.672067819639273,
+      "lower_pc": 4.671294738075622,
+      "upper_pc": 4.6728411571294135,
+      "fractional_parallax_error": 0.00016641851844775163,
+      "distance_gspphot": "4.665",
+      "distance_gspphot_lower": "4.6631",
+      "distance_gspphot_upper": "4.6664",
+      "reference_offset_pct": -0.1512781901316429
+    },
+    {
+      "source_id": "4847957293278177024",
+      "original_pc": 6.0414,
+      "distance_pc": 6.041412326770681,
+      "lower_pc": 6.038569417820389,
+      "upper_pc": 6.044257913818228,
+      "fractional_parallax_error": 0.0004734155215690759,
+      "distance_gspphot": "6.0327",
+      "distance_gspphot_lower": "6.0152",
+      "distance_gspphot_upper": "6.0504",
+      "reference_offset_pct": -0.1442101002124052
+    },
+    {
+      "source_id": "425040000962559616",
+      "original_pc": 5.923,
+      "distance_pc": 5.923042138328477,
+      "lower_pc": 5.917244563145723,
+      "upper_pc": 5.928851085304995,
+      "fractional_parallax_error": 0.0009852364600727035,
+      "distance_gspphot": "5.9149",
+      "distance_gspphot_lower": "5.897",
+      "distance_gspphot_upper": "5.9234",
+      "reference_offset_pct": -0.13746548037855133
+    },
+    {
+      "source_id": "939072613334579328",
+      "original_pc": 5.5846,
+      "distance_pc": 5.584628669736241,
+      "lower_pc": 5.58376150455074,
+      "upper_pc": 5.585496104307266,
+      "fractional_parallax_error": 0.0001561667522854439,
+      "distance_gspphot": "5.5781",
+      "distance_gspphot_lower": "5.5768",
+      "distance_gspphot_upper": "5.5794",
+      "reference_offset_pct": -0.11690427640463907
+    }
+  ]
+}
