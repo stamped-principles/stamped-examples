@@ -1,0 +1,16 @@
+{
+  "source_commit": "9ad4eda90c5b71867c0c8d84b21eca4373872ed1",
+  "source_dirty": false,
+  "gaia_commit": "3e89ae8df2ecfcab7b1d6effd5405c5f9d189d24",
+  "gaia_url": "https://github.com/stamped-principles/stamped-examples.git",
+  "source_sha256": {
+    "prepare-project.py": "9d6ae4d5e2e172666ac32dee84199953c018c2f1a78ac2c126957a0a0e067e7f",
+    "pyproject.toml": "7cbf2520ed88e22958d173d94373b68f1a749f6d832b5a03d34f21c71cd43671",
+    "pixi.lock": "2cdc11f71d853c3993eebb1be30814fddc6715faa52154504634a6cd33dfdbcf",
+    "project-README.md": "0d06347fde32d7db4018bcd2484b4db2f40307acd10aa1c7d6c93cf9dcf18cff",
+    "extension/estimate_distances.py": "5f4b7f83f7c3b857f16fa3a9dbeeb6038052c796f6f80e7d8fa2f165130e37e7",
+    "extension/fetch_uncertainties.py": "fa2ce158e298ed5fea1fb6791fc9e574c92a0a894c32719232ae521905e29420",
+    "extension/plot_distances.py": "72565985898c1069fd3afc2a2015a4d29f4a228435ba937b25d7118e947bb4bb",
+    "extension/validate.py": "e3fdc38e804774468a422f64d4a4abc238209b86fc9c22d20a69ea29aba5ad45"
+  }
+}

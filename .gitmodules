@@ -1,0 +1,3 @@
+[submodule "inputs/gaia"]
+	path = inputs/gaia
+	url = https://github.com/stamped-principles/stamped-examples.git
