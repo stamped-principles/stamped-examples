@@ -1,0 +1,4 @@
+[submodule "raw-data"]
+	path = raw-data
+	url = https://github.com/myyoda/principles-examples
+	branch = examples/stamped-awk-evolution/scenario-4/raw-data-work
