@@ -14,3 +14,8 @@ Compute distances to nearby stars using parallax measurements from the
 ## Verify
 
     make test
+
+## Requirements
+
+- Python >= 3.10
+- Dependencies declared in `pyproject.toml`; install with `pip install -r requirements.txt`
