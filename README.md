@@ -10,3 +10,7 @@ Compute distances to nearby stars using parallax measurements from the
 ## Reproduce
 
     make
+
+## Verify
+
+    make test

@@ -11,4 +11,8 @@ output/distances.csv: raw/gaia_nearby.csv code/compute_distances.py
 clean:
 	rm -f output/distances.csv
 
-.PHONY: all clean
+.PHONY: all test clean
+
+test: output/distances.csv
+	./test/fetch_reference_distances.sh
+	python3 test/verify_distances.py
