@@ -9,5 +9,4 @@ Compute distances to nearby stars using parallax measurements from the
 
 ## Reproduce
 
-    python3 code/fetch_data.py raw/gaia_nearby.csv
-    python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+    make
