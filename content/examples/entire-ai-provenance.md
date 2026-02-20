@@ -36,9 +36,10 @@ in principle; understanding them is not.
 
 ## What Entire does
 
-[Entire](https://entire.dev) is a CLI tool that integrates with Claude Code via its
-hook system to capture session-level provenance automatically and store it in git's
-own infrastructure. It adds three layers on top of a normal git workflow:
+[Entire](https://entire.dev) ([source](https://github.com/entireio/cli)) is a CLI
+tool that integrates with Claude Code via its hook system to capture session-level
+provenance automatically and store it in git's own infrastructure. It adds three
+layers on top of a normal git workflow:
 
 **1. Transcript mining.** Entire treats Claude Code's local JSONL session transcript
 as the authoritative record of what the agent did. Rather than relying on external
@@ -75,16 +76,20 @@ additions first, avoiding unfair penalization of agent-written code.
 ## Setup
 
 Entire integrates with Claude Code via its hooks mechanism. After installing the CLI,
-running `entire init` in a repository writes hook registrations into
-`.claude/settings.json`:
+running `entire enable` in a repository writes hook registrations into
+`.claude/settings.json` and creates an `.entire/settings.json` for Entire's own
+configuration:
 
 ```sh
-# Install Entire
-pip install entire
+# Install Entire (Homebrew)
+brew tap entireio/tap && brew install entireio/tap/entire
 
-# Initialize in a repository
+# Or via Go
+go install github.com/entireio/cli/cmd/entire@latest
+
+# Enable in a repository
 cd my-research-project
-entire init
+entire enable
 ```
 
 The resulting `.claude/settings.json` registers seven lifecycle hooks:
@@ -159,39 +164,23 @@ entire/checkpoints/v1
 
 ## Querying the provenance
 
-Three commands cover most provenance queries:
+Two commands cover most provenance queries, alongside standard git:
 
 ```sh
-# List all checkpoints chronologically
-entire log
-
-# Inspect a specific checkpoint
-entire show a3b2c4d5e6f7
+# Inspect a session or commit (pass a checkpoint ID or commit SHA)
+entire explain a3b2c4d5e6f7
 
 # Find all commits that involved agent assistance
 git log --grep="Entire-Checkpoint" --format="%H %s"
+
+# Browse the checkpoint branch directly
+git log entire/checkpoints/v1 --oneline
 ```
 
-`entire show` outputs the full session record:
+`entire explain` retrieves the full session record — prompts, token usage, modified
+files, and attribution data — for the given checkpoint.
 
-```
-Checkpoint: a3b2c4d5e6f7
-Date:       2026-02-20 14:31:44
-Model:      claude-sonnet-4-6
-Tokens:     4,821 input / 1,203 output
-
-Prompts:
-  1. Write a Python script that loads a BOLD fMRI timeseries...
-
-Files modified:
-  preprocess.py   [new]   agent: 87 lines  human: 3 lines  (97% agent)
-
-Summary:
-  Created a nilearn-based preprocessing script applying motion correction,
-  high-pass filtering at 1/128 Hz, and NIfTI I/O.
-```
-
-A collaborator cloning the repository six months later can run `entire show` on any
+A collaborator cloning the repository six months later can run `entire explain` on any
 commit's checkpoint ID and retrieve the exact prompt that drove the change — without
 needing access to the original developer's machine or Claude conversation history.
 
@@ -200,7 +189,7 @@ needing access to the original developer's machine or Claude conversation histor
 | Principle | How Entire embodies it |
 |---|---|
 | [Tracked]({{< ref "stamped_principles/t" >}}) | Every AI-assisted session is stored in a content-addressed git orphan branch. The `Entire-Checkpoint:` trailer creates bidirectional links between commits and session metadata. File changes, prompts, token usage, and human-vs-agent attribution are all version-controlled. |
-| [Actionable]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire show` makes any session's context retrievable on demand. |
+| [Actionable]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire explain` makes any session's context retrievable on demand. |
 | [Distributable]({{< ref "stamped_principles/d" >}}) | The `entire/checkpoints/v1` orphan branch is a standard git branch. Running `git push` transmits it alongside the code branches. Any collaborator who clones the repository receives the complete session history, not just the source files. |
 
 **A note on [Ephemerality]({{< ref "stamped_principles/e" >}}).** Shadow branches are
@@ -225,14 +214,14 @@ should plan for periodic archival or pruning of old checkpoint data.
 
 ## Practical guidelines
 
-1. **Run `entire init` at project creation.** Retroactively adding provenance
+1. **Run `entire enable` at project creation.** Retroactively adding provenance
    tracking to a repository means all prior AI-assisted commits will lack checkpoint
-   links. Initialize early, when the first agent session begins.
+   links. Enable early, when the first agent session begins.
 
-2. **Write informative prompts.** Prompts are stored verbatim in `session.json` and
-   appear in `entire log`. A prompt like "fix the bug" leaves a poor audit trail;
-   "fix the off-by-one error in the epoch indexing loop in train.py" tells future
-   readers exactly what problem was being solved.
+2. **Write informative prompts.** Prompts are stored verbatim in the session record
+   and surfaced by `entire explain`. A prompt like "fix the bug" leaves a poor audit
+   trail; "fix the off-by-one error in the epoch indexing loop in train.py" tells
+   future readers exactly what problem was being solved.
 
 3. **Treat `Entire-Checkpoint:` as a citable reference.** The trailer is stable —
    it does not change when branches are rebased or force-pushed (though squash
@@ -246,10 +235,10 @@ should plan for periodic archival or pruning of old checkpoint data.
    when working in repositories that will be made public.
 
 5. **Review AI contributions before submission.** Before submitting a paper or
-   archiving a dataset, run `entire log --since=<start-date>` to enumerate all
-   AI-assisted sessions. This gives you a checklist of checkpoints to review for
-   correctness and a ready-made record of the generative process to include in a
-   methods section.
+   archiving a dataset, run `git log entire/checkpoints/v1 --since=<start-date>`
+   to enumerate all AI-assisted sessions. This gives you a checklist of checkpoints
+   to review for correctness and a ready-made record of the generative process to
+   include in a methods section.
 
 ## Summary
 
