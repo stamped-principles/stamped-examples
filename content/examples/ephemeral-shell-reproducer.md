@@ -204,7 +204,7 @@ makes it "green", and the test prevents regressions.
    trigger the bug is noise.  Minimal scripts are easier to review, faster to
    bisect, and more likely to be turned into test cases.
 
-7. **Test your own instructions**: After sharing a reproducer (e.g., in a
+7. **Test your own instructions**: Before sharing a reproducer (e.g., in a
    GitHub issue), copy-paste the invocation instructions you gave the recipient
    and run them yourself on a different machine or in a fresh shell.  This
    catches implicit assumptions — a forgotten dependency, a path that only
