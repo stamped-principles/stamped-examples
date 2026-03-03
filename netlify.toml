@@ -16,3 +16,12 @@
 
 [context.branch-deploy]
   command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
+
+# Allow cross-origin SRI checks.  Netlify serves each deploy at multiple
+# URLs (commit-hash, deploy-preview alias, main site).  The Congo theme
+# emits integrity= attributes on assets, and browsers require CORS headers
+# to validate them when page origin ≠ asset origin.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
