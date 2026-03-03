@@ -1,0 +1,18 @@
+# Netlify configuration — used ONLY for PR deploy previews.
+# Production deployment remains on GitHub Pages via .github/workflows/hugo.yml.
+
+[build]
+  publish = "public"
+  command = "hugo --gc --minify"
+
+[build.environment]
+  HUGO_VERSION = "0.153.0"
+  HUGO_ENVIRONMENT = "production"
+  TZ = "America/New_York"
+
+# Override baseURL for deploy previews so links/assets resolve correctly.
+[context.deploy-preview]
+  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
+
+[context.branch-deploy]
+  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
