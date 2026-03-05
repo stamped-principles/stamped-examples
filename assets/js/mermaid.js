@@ -41,6 +41,8 @@ mermaid.initialize({
 
   // Track pan-zoom instances per container so we can re-fit on fullscreen change
   var panZoomInstances = new Map();
+  // Save pre-fullscreen state so we can restore exactly on exit
+  var preFullscreenState = new Map();
 
   function applySvgPanZoom(svg, container) {
     // Skip if already processed
@@ -81,6 +83,17 @@ mermaid.initialize({
     btn.textContent = "\u26F6";
     btn.addEventListener("click", function () {
       if (!document.fullscreenElement) {
+        // Save current state before entering fullscreen so we can restore on exit
+        var instance = panZoomInstances.get(container);
+        var svg = container.querySelector("svg");
+        if (instance && svg) {
+          preFullscreenState.set(container, {
+            pan: instance.getPan(),
+            zoom: instance.getZoom(),
+            width: svg.getAttribute("width"),
+            height: svg.getAttribute("height"),
+          });
+        }
         container.requestFullscreen().catch(function () {});
       } else {
         document.exitFullscreen();
@@ -94,18 +107,32 @@ mermaid.initialize({
     // Use double-rAF to wait for the browser to finish the fullscreen layout
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        panZoomInstances.forEach(function (instance, container) {
-          var svg = container.querySelector("svg");
-          if (svg) {
-            // Set explicit pixel dimensions so svg-pan-zoom computes correct transforms
-            // (svg-pan-zoom strips viewBox, so percentage/auto dimensions won't work)
-            svg.setAttribute("width", container.clientWidth);
-            svg.setAttribute("height", container.clientHeight);
+        if (document.fullscreenElement) {
+          // Entering fullscreen — expand to fill and fit/center
+          var instance = panZoomInstances.get(document.fullscreenElement);
+          var svg = document.fullscreenElement.querySelector("svg");
+          if (instance && svg) {
+            svg.setAttribute("width", document.fullscreenElement.clientWidth);
+            svg.setAttribute("height", document.fullscreenElement.clientHeight);
+            instance.resize();
+            instance.fit();
+            instance.center();
           }
-          instance.resize();
-          instance.fit();
-          instance.center();
-        });
+        } else {
+          // Exiting fullscreen — restore saved dimensions and pan/zoom state
+          preFullscreenState.forEach(function (state, container) {
+            var instance = panZoomInstances.get(container);
+            var svg = container.querySelector("svg");
+            if (instance && svg) {
+              svg.setAttribute("width", state.width);
+              svg.setAttribute("height", state.height);
+              instance.resize();
+              instance.zoom(state.zoom);
+              instance.pan(state.pan);
+            }
+          });
+          preFullscreenState.clear();
+        }
       });
     });
   });
