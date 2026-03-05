@@ -13,6 +13,9 @@ enableQuicklink = true
 
 fingerprintAlgorithm = "sha256"
 
+[mermaid]
+  panZoom = true
+
 [header]
   layout = "basic"
   showTitle = true
