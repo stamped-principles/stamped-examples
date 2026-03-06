@@ -1,4 +1,7 @@
 [submodule "themes/congo"]
 	path = themes/congo
-	url = https://github.com/jpanther/congo.git
+	# url = https://github.com/jpanther/congo.git
+    # For the PR with zoom we submitted, pending
+    # https://github.com/jpanther/congo/pull/1156
+	url = https://github.com/yarikoptic/congo.git
 	branch = stable
