@@ -130,8 +130,8 @@ Use `pyproject.toml` to specify the upper- or/and the lower-bound of your projec
 ### A testable example
 
 The following creates a minimal Python project and runs it in the stock
-uv container:
-
+uv container.
+If you don't have docker installed yet, follow ["Get Docker"](https://docs.docker.com/get-started/get-docker/) or your OS instructions to get it running.
 ```sh
 #!/bin/sh
 # pragma: testrun stock-uv-container
@@ -156,7 +156,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = ["pyyaml"]
 EOF
-
+# -- write a module that prints items listed in the config file with a greeting --
 cat > greet/__init__.py << 'PYEOF'
 import yaml
 import sys
@@ -360,7 +360,9 @@ python -m myproject
 ```
 
 For projects that are not a full Python package (e.g., a standalone script
-with a few dependencies), use `pip install -r requirements.txt` or
+with a few dependencies), you likely would not have `pyproject.toml`.
+Then just create a simple `requirements.txt` with list of (versioned) dependencies and 
+use `pip install -r requirements.txt` or
 `uv pip install -r requirements.txt` instead of `pip install .`.
 
 **Key flags:**
