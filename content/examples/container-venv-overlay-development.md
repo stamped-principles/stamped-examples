@@ -36,27 +36,23 @@ are visible inside the container instantly.
 
 {{< mermaid >}}
 flowchart TB
-    subgraph host["Host system"]
-        runtime["Container runtime
-           (Docker / Podman / Singularity)"]
-        subgraph project["📁Project folder"]
-            code["Source code + pyproject.toml"]
-            venv-overlay["📁.venv/
-                 (project-specific deps)"]
-        end
-        subgraph container["Container"]
-            env["Python + system libs +
-                 pre-installed packages"]
-            work["📁/work/
-                  with 📁.venv/
-                 (bind-mounted source)"]:::dashed
-        end
-
+    subgraph host["HOST FILESYSTEM"]
+        code["📁 Source code + pyproject.toml"]
+        venv["📁 .venv/<br>(persistent on host)"]
     end
-    runtime -.->|orchestrates| container
-    project ==>|bind mount| work
-    env -->|base libraries| venv-overlay
-    work -->|project code| venv-overlay
+
+    runtime["Container runtime"]
+
+    subgraph container["CONTAINER"]
+        env["Python + system libs +<br>pre-installed packages"]
+        work["📁 /work/ = bind-mounted 📁"]:::dashed
+    end
+
+    runtime -.->|starts| container
+    code ==>|"bind mount<br>(same files, two views)"| work
+    env -->|base packages| venv
+    work -->|"pip install ."| venv
+
     classDef dashed stroke-dasharray: 5 5
 {{< /mermaid >}}
 
@@ -275,25 +271,23 @@ filesystems are ephemeral, the venv is destroyed when the container exits.
 
 {{< mermaid >}}
 flowchart TB
-    subgraph host["Host system"]
-        runtime["Container runtime
-           (Docker / Podman / Singularity)"]
-        subgraph project["📁Project folder"]
-            code["Source code + pyproject.toml"]
-        end
-        subgraph container["Container"]
-            env["Python + system libs +
-                 pre-installed packages"]
-            work["📁/work/
-                  (bind-mounted source)"]:::dashed
-            venv-eph["📁/tmp/venv/
-                 (ephemeral overlay)"]
-        end
+    subgraph host["HOST FILESYSTEM"]
+        code["📁 Source code + pyproject.toml"]
     end
-    runtime -.->|orchestrates| container
-    project ==>|bind mount| work
+
+    runtime["Container runtime"]
+
+    subgraph container["CONTAINER"]
+        env["Python + system libs +<br>pre-installed packages"]
+        work["📁 /work/ = bind-mounted 📁"]:::dashed
+        venv-eph["📁 /tmp/venv/<br>(ephemeral, destroyed on exit)"]
+    end
+
+    runtime -.->|starts| container
+    code ==>|bind mount| work
     env -->|"--system-site-packages"| venv-eph
-    work -->|project code| venv-eph
+    work -->|"pip install ."| venv-eph
+
     classDef dashed stroke-dasharray: 5 5
 {{< /mermaid >}}
 
