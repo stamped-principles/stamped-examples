@@ -313,7 +313,7 @@ This is where Portability meets Tracking: the environment specification itself i
 
 ### 9. Reproduce from scratch
 
-We write a script that clones the repository into a fresh temp directory, creates a virtual environment, installs dependencies, runs the pipeline, and runs the tests:
+We write `test/reproduce_from_scratch.sh` — a script that clones the repository into a fresh temp directory, creates a virtual environment, installs dependencies, runs the pipeline, and runs the tests:
 
 ```sh
 #!/bin/sh
