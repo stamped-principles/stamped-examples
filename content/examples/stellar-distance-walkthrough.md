@@ -348,7 +348,7 @@ This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-repro
 
 ### 10. Push to GitHub
 
-We push to a public repository.
+We push to a [public repository](https://github.com/asmacdo/STAMPED-stellar-distances).
 Now anyone can `git clone`, `pip install -r requirements.txt`, `make`, and reproduce the result.
 
 Until this step the research object was self-contained and reproducible — but only on our machine.
