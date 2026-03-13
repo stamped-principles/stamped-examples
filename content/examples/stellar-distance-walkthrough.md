@@ -39,8 +39,25 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 
 ### 1. Proof of concept
 
-We start with a single Python script that queries the Gaia TAP API, fetches parallax for 100 nearby stars, computes `distance_pc = 1000 / parallax`, and writes a CSV.
-Run it, get a result, done.
+We start with a single Python script that does everything: queries the Gaia TAP API, fetches parallax measurements for 100 nearby stars, computes distances, and writes a CSV.
+
+```python
+# compute_everything.py (abbreviated)
+QUERY = (
+    "SELECT TOP 100 source_id, parallax "
+    "FROM gaiadr3.gaia_source "
+    "WHERE parallax > 10 AND parallax_error/parallax < 0.1 "
+    "ORDER BY parallax DESC"
+)
+
+# ... fetch from Gaia TAP API ...
+
+for star in reader:
+    distance_pc = 1000.0 / float(star["parallax"])
+```
+
+Run it, get a `distances.csv` with 100 rows, done.
+Proxima Centauri shows up at ~1.30 parsecs — looks right.
 
 This is where most analyses live forever — and that's fine for exploration.
 But what happens when we come back in six months and can't remember which query parameters we used?
@@ -49,34 +66,116 @@ When a reviewer asks us to recompute with updated data?
 
 Each step that follows addresses one of these failure modes.
 
-*We committed this so it's visible in the repo, but in real life this might just be a loose file on the desktop.*
+**Commit**: [TODO]
 
-**Commit**: [`0d95ecc`](0d95ecc)
+### 2. Gather and start tracking
 
-### 2. Gather everything under one roof
+We put everything in a single project directory and run `git init`.
 
-We put all the files in a single project directory.
+Two things happen at once here: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
+The boundary is the "don't look up" rule (S.1): everything needed for this work lives inside one root, and nothing outside should be implicitly required.
+Git gives us content-addressed version control — each commit hash is a cryptographic fingerprint of the entire project state, not an ambiguous label like "version 1.0."
 
-This sounds obvious, but it's the foundation everything else builds on.
-Right now the script and its output are loose — a collaborator would need to know which ones go together.
-A project directory draws a boundary: everything inside is part of this work, nothing outside should be needed.
-STAMPED calls this the "don't look up" rule (S.1): a research object must never rely on implicit external state.
+From now on, every change is recorded and reversible.
+That makes all subsequent steps low-risk.
 
-**Advances**: S (everything reachable from one root)
+**Advances**: S (everything reachable from one root), T (content identification, change history)
 
-### 3. Organize into directories
+**Commit**: [TODO]
 
-We separate `code/`, `raw/`, and `output/`, and split the monolithic script into two: one that fetches data, one that computes distances.
+### 3. Split the script and fetch data with provenance
 
-Now the role of each file is obvious at a glance — code is what we write, raw is what we fetch, output is what we compute.
+The monolithic script does two things — fetch and compute — and there's no way to re-run one without the other.
+We split it into two scripts: `fetch_data.py` to retrieve data from Gaia, and `compute_distances.py` to calculate distances from that data.
+
+```python
+# fetch_data.py
+def fetch(output_path):
+    params = urllib.parse.urlencode({
+        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv",
+        "QUERY": QUERY,
+    })
+    with urllib.request.urlopen(f"{GAIA_TAP_URL}?{params}") as resp:
+        data = resp.read().decode()
+    with open(output_path, "w") as f:
+        f.write(data)
+```
+
+```python
+# compute_distances.py
+def main(input_path, output_path):
+    # ... read input CSV ...
+    for star in stars:
+        distance_pc = 1000.0 / float(star["parallax"])
+    # ... write output CSV ...
+```
+
+Now we do something important: instead of just running `fetch_data.py`, we wrap it with `datalad run`:
+
+```sh
+datalad run \
+  -m "Fetch 100 nearest stars from Gaia DR3" \
+  -o "gaia_nearby.csv" \
+  "python3 fetch_data.py gaia_nearby.csv"
+```
+
+This records exactly what command produced the data, creating a machine-readable provenance record in the commit message.
+The data is no longer just "a CSV that appeared somehow" — it has a documented origin that anyone can inspect and replay with `datalad rerun`.
+
+This also addresses a Self-containment concern.
+Our analysis depends on an external network resource (the Gaia TAP API), which means it could break if the API changes or goes offline.
+Once we've fetched the data with `datalad run`, we have our own versioned copy.
+The API is still the authoritative source, but we're no longer silently dependent on it — the provenance record documents where the data came from, and the committed CSV means the analysis can proceed offline.
+
+`datalad run` works on plain git repositories — no special initialization required.
+
+**Advances**: T (programmatic provenance), S (versioned local copy of external data), A (provenance is re-executable)
+
+**Commits**: [TODO] (split scripts), [TODO] (datalad run fetch)
+
+### 4. Organize into directories
+
+We create `code/`, `raw/`, and `output/` directories, and move each file to where it belongs:
+
+```
+code/fetch_data.py
+code/compute_distances.py
+raw/gaia_nearby.csv
+output/distances.csv
+```
+
+Code is what we write, raw is what we fetch, output is what we compute.
+The role of each file is obvious at a glance.
 When something breaks, we know where to look.
-And each piece is independently testable and replaceable — Modularity at its simplest.
+
+This is Modularity at its simplest — not separate repositories, just separate directories with clear roles.
 
 **Advances**: M (logical separation of concerns), S (clearer boundary)
 
-**Commit**: [`5d7c7fc`](5d7c7fc) (steps 2 and 3 combined)
+**Commit**: [TODO]
 
-### 4. Write a README
+### 5. Record the analysis with provenance
+
+Just as we used `datalad run` for the fetch in step 3, we now use it for the analysis:
+
+```sh
+datalad run \
+  -m "Compute distances for 100 nearest stars" \
+  -i "raw/gaia_nearby.csv" \
+  -i "code/compute_distances.py" \
+  -o "output/distances.csv" \
+  "python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
+```
+
+The `-i` flags declare inputs and `-o` declares outputs.
+Now the full pipeline — from raw data to final results — has machine-readable provenance.
+Anyone can inspect the commit messages to see exactly how each file was produced.
+
+**Advances**: T (full pipeline provenance), A (analysis is re-executable via `datalad rerun`)
+
+**Commit**: [TODO]
+
+### 6. Write a README
 
 We add a README explaining what this project does, what the inputs and outputs are, and how to run it.
 
@@ -86,26 +185,21 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 
 **Advances**: A (someone can now follow instructions to reproduce), S (project is self-describing)
 
-**Commit**: [`7c92a7f`](7c92a7f)
+**Commit**: [TODO]
 
-### 5. Initialize version control
+### 7. Write a Makefile
 
-`git init`, add everything, first commit.
+We encode the pipeline as `make` targets with their dependencies:
 
-From now on every change is recorded: who, when, what, and (in the commit message) why.
-We can always get back to any previous state.
+```makefile
+all: output/distances.csv
 
-Each commit hash is a fingerprint of the entire project state — not a label like "version 1.0" that two people could apply to different things, but a cryptographic checksum where the same hash means provably the same content.
-This is also the safety net that makes every subsequent step low-risk: if something goes wrong, we revert.
+raw/gaia_nearby.csv:
+	python3 code/fetch_data.py raw/gaia_nearby.csv
 
-**Advances**: T (content identification, change history)
-
-*In the companion repository we initialized git from the start so each step has its own commit. In practice, this is the point where we'd run `git init`.*
-
-### 6. Write a Makefile
-
-We encode the pipeline as `make` targets: `raw/gaia_nearby.csv` depends on `code/fetch_data.py`, `output/distances.csv` depends on the raw data and `code/compute_distances.py`.
-`make` runs the whole thing.
+output/distances.csv: raw/gaia_nearby.csv code/compute_distances.py
+	python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+```
 
 The README *says* how to run the pipeline.
 The Makefile *does* it.
@@ -114,65 +208,99 @@ Make also encodes dependencies: it knows what to re-run when an input changes, w
 
 **Advances**: A (executable specification — not just documentation but a runnable recipe)
 
-**Commit**: [`84ba4a5`](84ba4a5)
+**Commit**: [TODO]
 
-### 7. Add a test
+### 8. Add a test
 
 We write a verification script that fetches independent reference distances from Gaia's GSP-Phot pipeline and compares them to our computed values.
 `make test` runs it.
-48 of our 100 stars have reference values; all match within 0.3%.
+
+```
+$ make test
+Fetched 48 reference distances
+Compared 48 stars
+Max error: 0.27%
+PASSED: all within 0.5%
+```
 
 Without verification, a research object asks others to trust the results.
 A test makes the claim falsifiable — anyone can run `make test` and see for themselves.
 
-An interesting detail: only 48 stars have GSP-Phot distances because Gaia's sophisticated pipeline doesn't produce estimates for every star.
+Only 48 of our 100 stars have GSP-Phot distances because Gaia's sophisticated pipeline doesn't produce estimates for every star.
 Our simple one-line formula actually covers more stars than the pipeline does.
 
 **Advances**: A (verifiable results, not just "trust me")
 
-**Commit**: [`2a6cd40`](2a6cd40)
+**Commit**: [TODO]
 
-### 8. Declare dependencies
+### 9. Declare and pin dependencies
 
-We add `pyproject.toml` listing the Python packages we use.
+We add `pyproject.toml` listing the Python packages we use, then generate a hash-locked `requirements.txt`:
+
+```toml
+# pyproject.toml
+[project]
+name = "stellar-distance"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["requests"]
+```
+
+```sh
+pip-compile --generate-hashes -o requirements.txt pyproject.toml
+```
 
 Until now the scripts used only Python's standard library.
 When we rewrote the fetch script to use `requests` (cleaner API, better error handling), we introduced an external dependency.
-Without declaring it, a fresh machine fails with `ModuleNotFoundError: No module named 'requests'` — a Portability failure that only surfaces when someone else tries to run the code.
-`pyproject.toml` makes that assumption explicit.
+Without declaring it, a fresh machine fails with `ModuleNotFoundError` — a Portability failure that only surfaces when someone else tries to run the code.
 
-**Advances**: P (host assumptions are now documented, not implicit)
-
-**Commit**: [`ed1900b`](ed1900b)
-
-### 9. Pin dependency versions
-
-We generate `requirements.txt` with exact versions and cryptographic hashes using `pip-compile --generate-hashes`.
-
-There's a big difference between `requests` (any version) and `requests==2.32.5 --hash=sha256:...` (this exact build).
+`pyproject.toml` makes the assumption explicit.
+`requirements.txt` with hashes goes further: there's a big difference between `requests` (any version) and `requests==2.32.5 --hash=sha256:...` (this exact build).
 The first is a declaration — it says what we need.
 The second is a distribution-ready specification — it says exactly what bytes to install.
-Hash pinning means that even if a package is re-uploaded with the same version number, the install rejects it rather than silently using different code.
+Hash pinning means even if a package is re-uploaded with the same version number, the install rejects it rather than silently using different code.
 This is where Portability meets Tracking: the environment specification itself is content-addressed.
 
-**Advances**: P (reproducible environment), T (pinned versions are content-addressed)
+**Advances**: P (host assumptions documented, reproducible environment), T (pinned versions are content-addressed)
 
-**Commit**: [`4e63464`](4e63464)
+**Commits**: [TODO] (pyproject.toml), [TODO] (requirements.txt)
 
-### 10. Record provenance with datalad run
+### 10. Reproduce from scratch
 
-We wrap the fetch and analysis commands with `datalad run`, which records the exact command, inputs, and outputs as machine-readable metadata in each commit.
+We write a script that clones the repository into a fresh temp directory, installs dependencies, runs the pipeline, and runs the tests:
 
-A regular git commit says "these files changed."
-A `datalad run` commit says "these files changed *because this command was run with these inputs and produced these outputs*."
-The run record is JSON embedded in the commit message — machine-readable, not just human-readable.
-And because the record is executable, anyone can replay it with `datalad rerun`.
+```sh
+#!/bin/sh
+set -eux
+repo_url="${1:?Usage: $0 <repo-url-or-path>}"
 
-`datalad run` works on plain git repositories — no special dataset initialization or git-annex required.
+cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
+git clone "$repo_url" stellar-distance
+cd stellar-distance
 
-**Advances**: T (programmatic provenance), A (provenance records are executable specifications)
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
 
-**Commits**: [`28795f6`](28795f6) (fetch), [`277e8b7`](277e8b7) (compute)
+make
+make test
+
+echo "=== PASSED: reproduced from scratch ==="
+```
+
+If it passes, the research object doesn't depend on anything from our machine — no accumulated state, no forgotten steps.
+The temp directory is thrown away afterward.
+
+This is the integration test for a research object.
+Ephemeral reproduction exercises almost every STAMPED property at once: the project must be self-contained (S), the pipeline must actually run (A), it must work in a fresh environment (P), and there's no prior state to lean on (E).
+If `reproduce_from_scratch.sh` passes, we have strong evidence that the research object is solid.
+If it fails, the error tells us which property broke.
+
+This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-reproducer" >}}) pattern applied to our own project.
+
+**Advances**: E (results produced without prior state), A (reproduction is a single command), S (validates that nothing outside the boundary is needed)
+
+**Commit**: [TODO]
 
 ### 11. Push to GitHub
 
@@ -187,31 +315,14 @@ For long-term persistence the next step would be depositing on Zenodo or Softwar
 
 **Advances**: D (persistently retrievable by others)
 
-**Commit**: [TODO: after GitHub push]
-
-### 12. Reproduce from scratch
-
-We write a script that clones the repository into a fresh temp directory, installs dependencies, runs the pipeline, and runs the tests.
-If it passes, the research object doesn't depend on anything from our machine — no accumulated state, no forgotten steps.
-The temp directory is thrown away afterward.
-
-This is the integration test for a research object.
-Ephemeral reproduction exercises almost every STAMPED property at once: the project must be self-contained (S), the pipeline must actually run (A), it must work in a fresh environment (P), and there's no prior state to lean on (E).
-If `reproduce_from_scratch.sh` passes, we have strong evidence that the research object is solid.
-If it fails, the error tells us which property broke.
-
-This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-reproducer" >}}) pattern applied to our own project.
-
-**Advances**: E (results produced without prior state), A (reproduction is a single command), S (validates that nothing outside the boundary is needed)
-
-**Commit**: [`362ad10`](362ad10)
+**Commit**: [TODO]
 
 ## STAMPED scorecard
 
 | Property | Where we ended up |
 |---|---|
-| **S** Self-contained | All code, data, and instructions under one root. README describes the project. |
-| **T** Tracked | Git tracks all changes. `datalad run` records provenance per computation. Dependencies hash-pinned. |
+| **S** Self-contained | All code, data, and instructions under one root. README describes the project. Versioned local copy of fetched data. |
+| **T** Tracked | Git tracks all changes. `datalad run` records provenance for both fetch and analysis. Dependencies hash-pinned. |
 | **A** Actionable | `make` reproduces results. `make test` verifies. `datalad rerun` replays provenance. README documents the workflow. |
 | **M** Modular | code/, raw/, output/, test/ are logically separated. |
 | **P** Portable | Dependencies declared in pyproject.toml, pinned in requirements.txt with hashes. No hardcoded paths. |
@@ -223,25 +334,60 @@ This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-repro
 Each STAMPED property is a spectrum.
 We've built something solid, but there are natural next steps depending on what the project needs.
 
-**Containers for portability and ephemerality**:
+### Replay and adapt with datalad rerun
+
+Because we recorded provenance with `datalad run`, we can replay the entire pipeline:
+
+```sh
+datalad rerun
+```
+
+This re-executes every recorded command in order.
+But `datalad rerun` really shines when something changes.
+
+Say we want to expand our sample from 100 to 200 stars.
+We update the query parameters in `fetch_data.py`, then re-run just the fetch:
+
+```sh
+datalad run \
+  -m "Fetch 200 nearest stars from Gaia DR3" \
+  -o "raw/gaia_nearby.csv" \
+  "python3 code/fetch_data.py raw/gaia_nearby.csv"
+```
+
+The new data is committed with a fresh provenance record.
+Then `datalad rerun` of the analysis step picks up the new input and recomputes distances — the full pipeline adapts to changed inputs without manual re-orchestration.
+
+This is where modularity and provenance reinforce each other: because the fetch and analysis steps are recorded separately, we can update one without losing the provenance of the other.
+
+### Modularity via subdatasets
+
+Right now our modularity is directory-level: `code/`, `raw/`, `output/`.
+That's a good start, but the raw data and the analysis code have different lifecycles — the data might be shared across projects while the analysis code is specific to this one.
+
+DataLad subdatasets take modularity further.
+The raw data could live in its own independently versioned dataset:
+
+```sh
+datalad clone <data-url> raw/
+```
+
+A colleague running a different analysis on the same stars would `datalad install` the data module rather than re-fetching from the API.
+The parent dataset records which exact version of each subdataset it depends on, so the full research object remains Self-contained and Tracked even as modules evolve independently.
+
+### Containers for portability and ephemerality
+
 A Dockerfile (pinned by image digest) freezes the OS and Python version.
 Running the pipeline inside a disposable container validates that the specifications are complete — if it works in a fresh container, it's not relying on anything from our machine.
 See [Container venv overlay for Python development]({{< ref "examples/container-venv-overlay-development" >}}) for a detailed treatment of this pattern.
 
-**CI for ephemeral validation**:
+### CI for ephemeral validation
+
 A GitHub Actions workflow that clones, installs, and runs `make test` on every push.
-This catches environment drift automatically.
+This catches environment drift automatically — the ephemeral reproduction test from step 10, run by someone else's machine on every change.
 
-**Modularity via subdatasets**:
-The raw data could live in its own DataLad subdataset, independently versioned and reusable.
-A colleague running a different analysis on the same stars would `datalad install` the data module rather than re-fetching from the API.
+### Archival distribution
 
-**Reproducible re-execution**:
-`datalad rerun` replays the recorded provenance.
-If the raw data is updated (say, a new Gaia release), update the input, `datalad rerun`, and the outputs reflect the new data.
-Branches can separate outputs produced from different input versions.
-
-**Archival distribution**:
 Deposit the repository on [Zenodo](https://zenodo.org/) for a DOI.
 Push the container image to a registry.
 Mirror data to multiple remotes so no single point of failure breaks reproducibility.
