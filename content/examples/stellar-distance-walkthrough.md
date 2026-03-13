@@ -39,17 +39,13 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 
 We start with a single Python script that does everything: queries the Gaia TAP API, fetches parallax measurements for 100 nearby stars, computes distances, and writes a CSV.
 
+The [full script](https://github.com/asmacdo/STAMPED-stellar-distances/blob/0d95ecc/compute_everything.py) fetches data and computes distances in one pass:
+
 ```python
 # compute_everything.py (abbreviated)
-QUERY = (
-    "SELECT TOP 100 source_id, parallax "
-    "FROM gaiadr3.gaia_source "
-    "WHERE parallax > 10 AND parallax_error/parallax < 0.1 "
-    "ORDER BY parallax DESC"
-)
+QUERY = "SELECT TOP 100 source_id, parallax FROM gaiadr3.gaia_source ..."
 
-with urllib.request.urlopen(f"{GAIA_TAP_URL}?{params}") as resp:
-    raw = resp.read().decode()
+# ... fetch from Gaia TAP API ...
 
 for star in csv.DictReader(io.StringIO(raw)):
     distance_pc = 1000.0 / float(star["parallax"])
@@ -58,10 +54,10 @@ for star in csv.DictReader(io.StringIO(raw)):
 Run it, get a `distances.csv` with 100 rows.
 Proxima Centauri shows up at ~1.30 parsecs — looks right.
 
-We put it in a directory and run `git init`.
+We put the script and its output in a directory and run `git init`.
 Two things happen at once: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
-The boundary is the "don't look up" rule (S.1): everything needed for this work lives inside one root, and nothing outside should be implicitly required.
-Git gives us content-addressed version control — each commit hash is a cryptographic fingerprint of the entire project state, not an ambiguous label like "version 1.0."
+The project boundary is one way to follow the don't look up rule (S.1): everything needed for this work lives inside one root, and nothing outside should be implicitly required.
+Git gives us content-addressed version control, so we can track changes over time and identify each project state by its commit.
 
 From now on, every change is recorded and reversible.
 That makes all subsequent steps low-risk.
