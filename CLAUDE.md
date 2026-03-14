@@ -89,6 +89,12 @@ CI runs this on push to main with `--strict --push`.
 - **GitHub Pages** (`hugo.yml`): deploy on push to main
 - **Netlify** (`netlify.toml`): PR deploy previews with CORS headers for SRI
 
+## Project commands
+
+- `/stamped-assess <target>` — Assess a study, tool, or example against STAMPED
+  and FAIR properties. Two-phase: doc-based analysis with per-property ratings,
+  then optional hands-on validation. See `.claude/commands/stamped-assess.md`.
+
 ## Hugo customizations
 
 - **Congo theme fork** with mermaid pan/zoom/fullscreen (`params.toml: mermaid.panZoom = true`)

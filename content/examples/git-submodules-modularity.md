@@ -4,7 +4,7 @@ date: 2026-02-19
 description: "Using git submodules to compose independent datasets into modular research objects"
 summary: "Demonstrates how git submodules enable independent versioning and composition of dataset components."
 tags: ["git", "submodules", "dataset-organization"]
-stamped_principles: ["M"]
+stamped_principles: ["M", "T"]
 fair_principles: ["I", "R"]
 instrumentation_levels: ["tool"]
 aspirations: ["reproducibility", "rigor"]
