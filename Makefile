@@ -27,8 +27,14 @@ test-snippets:
 test-hugo:
 	hugo --gc --minify
 
+materialize:
+	tox -e materialize
+
+rematerialize:
+	tox -e rematerialize
+
 clean:
 	rm -f $(STAMPED_MD) $(STAMPED_PDF)
 	rm -rf public/
 
-.PHONY: all serve-devel pdf clean test test-snippets test-hugo
+.PHONY: all serve-devel pdf clean test test-snippets test-hugo materialize rematerialize
