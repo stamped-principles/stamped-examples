@@ -14,6 +14,19 @@ params:
   verified: true
 ---
 
+```sh
+#!/bin/sh
+# pragma: testrun full-build
+# pragma: render hidden
+# pragma: requires sh git python3 curl make pip-compile datalad
+# pragma: timeout 600
+# pragma: materialize stellar-distance
+
+set -eux
+PS4='> '
+cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
+```
+
 ## What we're building
 
 Most research code starts the same way: a script that works, on your machine, right now.
@@ -36,6 +49,57 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 ## Steps
 
 ### 1. Start a project
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+git init stellar-distance
+cd stellar-distance
+git config user.email "demo@example.com"
+git config user.name "Demo User"
+
+cat > compute_everything.py <<'PYEOF'
+#!/usr/bin/env python3
+"""Quick proof of concept: fetch Gaia parallax data and compute distances."""
+
+import csv
+import io
+import urllib.request
+import urllib.parse
+
+GAIA_TAP_URL = "https://gea.esac.esa.int/tap-server/tap/sync"
+QUERY = (
+    "SELECT TOP 100 source_id, parallax "
+    "FROM gaiadr3.gaia_source "
+    "WHERE parallax > 10 AND parallax_error/parallax < 0.1 "
+    "ORDER BY parallax DESC"
+)
+
+params = urllib.parse.urlencode({
+    "REQUEST": "doQuery",
+    "LANG": "ADQL",
+    "FORMAT": "csv",
+    "QUERY": QUERY,
+})
+
+with urllib.request.urlopen(f"{GAIA_TAP_URL}?{params}") as resp:
+    raw = resp.read().decode()
+
+reader = csv.DictReader(io.StringIO(raw))
+with open("distances.csv", "w", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=["source_id", "distance_pc"])
+    writer.writeheader()
+    for star in reader:
+        distance_pc = 1000.0 / float(star["parallax"])
+        writer.writerow({"source_id": star["source_id"], "distance_pc": f"{distance_pc:.4f}"})
+
+print("Done — wrote distances.csv")
+PYEOF
+
+python3 compute_everything.py
+git add compute_everything.py distances.csv
+git commit -m "Initial analysis: compute stellar distances"
+```
 
 We start with a single Python script that does everything: queries the Gaia TAP API, fetches parallax measurements for 100 nearby stars, computes distances, and writes a CSV.
 
@@ -79,10 +143,94 @@ Each step that follows addresses one of these failure modes.
 
 ### 2. Split scripts and fetch data with provenance
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+cat > fetch_data.py <<'PYEOF'
+#!/usr/bin/env python3
+"""Fetch nearby star parallax data from Gaia DR3 via TAP query."""
+
+import sys
+import urllib.parse
+import urllib.request
+
+GAIA_TAP_URL = "https://gea.esac.esa.int/tap-server/tap/sync"
+
+QUERY = """\
+SELECT TOP {limit}
+    source_id, parallax
+FROM gaiadr3.gaia_source
+WHERE parallax > {min_parallax}
+    AND parallax_error / parallax < {max_error_ratio}
+ORDER BY parallax DESC
+"""
+
+
+def fetch(output_path, limit=100, min_parallax=10, max_error_ratio=0.1):
+    query = QUERY.format(
+        limit=limit,
+        min_parallax=min_parallax,
+        max_error_ratio=max_error_ratio,
+    )
+    params = urllib.parse.urlencode({
+        "REQUEST": "doQuery",
+        "LANG": "ADQL",
+        "FORMAT": "csv",
+        "QUERY": query,
+    })
+    with urllib.request.urlopen(f"{GAIA_TAP_URL}?{params}") as resp:
+        data = resp.read().decode()
+
+    with open(output_path, "w") as f:
+        f.write(data)
+
+    n_stars = data.count("\n") - 1
+    print(f"Fetched {n_stars} stars -> {output_path}")
+
+
+if __name__ == "__main__":
+    output = sys.argv[1] if len(sys.argv) > 1 else "gaia_nearby.csv"
+    fetch(output)
+PYEOF
+
+cat > compute_distances.py <<'PYEOF'
+#!/usr/bin/env python3
+"""Compute stellar distances from Gaia parallax measurements."""
+
+import csv
+import sys
+
+
+def main(input_path, output_path):
+    with open(input_path) as f:
+        reader = csv.DictReader(f)
+        stars = list(reader)
+
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["source_id", "distance_pc"])
+        writer.writeheader()
+        for star in stars:
+            distance_pc = 1000.0 / float(star["parallax"])
+            writer.writerow({
+                "source_id": star["source_id"],
+                "distance_pc": f"{distance_pc:.4f}",
+            })
+
+    print(f"Computed distances for {len(stars)} stars -> {output_path}")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])
+PYEOF
+
+git rm compute_everything.py
+git rm distances.csv
+git add fetch_data.py compute_distances.py
+git commit -m "Split into fetch and compute scripts"
+```
+
 The monolithic script does two things — fetch and compute — and there's no way to re-run one without the other.
 We split it into two scripts: `fetch_data.py` to retrieve data from Gaia, and `compute_distances.py` to calculate distances from that data.
-
-<!-- TODO: link to fetch_data.py and compute_distances.py commits once repo history is restructured -->
 
 ```python
 # fetch_data.py (abbreviated)
@@ -104,6 +252,7 @@ def main(input_path, output_path):
 Now we do something important: instead of just running `fetch_data.py`, we wrap it with `datalad run`:
 
 ```sh
+# pragma: testrun full-build
 datalad run \
   -m "Fetch 100 nearest stars from Gaia DR3" \
   -o "gaia_nearby.csv" \
@@ -133,6 +282,21 @@ stellar-distance/
 
 ### 3. Organize into directories
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+python3 compute_distances.py gaia_nearby.csv distances.csv
+git add distances.csv
+git commit -m "Compute distances from fetched data"
+
+mkdir -p code raw output
+git mv fetch_data.py code/
+git mv compute_distances.py code/
+git mv gaia_nearby.csv raw/
+git mv distances.csv output/
+git commit -m "Organize into code/, raw/, output/"
+```
+
 We create `code/`, `raw/`, and `output/` directories, and move each file to where it belongs:
 
 ```
@@ -156,9 +320,18 @@ This is Modularity at its simplest — not separate repositories, just separate 
 
 ### 4. Record the analysis with provenance
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+git rm output/distances.csv
+git commit -m "Remove output to re-compute with provenance"
+mkdir -p output
+```
+
 Just as we used `datalad run` for the fetch in step 2, we now use it for the analysis:
 
 ```sh
+# pragma: testrun full-build
 datalad run \
   -m "Compute distances for 100 nearest stars" \
   -i "raw/gaia_nearby.csv" \
@@ -174,6 +347,29 @@ Anyone can inspect the commit messages to see exactly how each file was produced
 **Advances**: T (full pipeline provenance), A (analysis is re-executable via `datalad rerun`)
 
 ### 5. Write a README
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+cat > README.md <<'README'
+# Stellar Distance from Gaia Parallax
+
+Compute distances to nearby stars using parallax measurements from the
+[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
+
+**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
+**Output**: Source IDs and computed distances (parsecs).
+**Method**: `distance_pc = 1000 / parallax_mas`
+
+## Reproduce
+
+    python3 code/fetch_data.py raw/gaia_nearby.csv
+    python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+README
+
+git add README.md
+git commit -m "Add README with reproduction instructions"
+```
 
 We add a README explaining what this project does, what the inputs and outputs are, and how to run it:
 
@@ -201,6 +397,30 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 
 ### 6. Write a Makefile
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+printf '.POSIX:\n\nall: output/distances.csv\n\nraw/gaia_nearby.csv:\n\tpython3 code/fetch_data.py raw/gaia_nearby.csv\n\noutput/distances.csv: raw/gaia_nearby.csv code/compute_distances.py\n\tpython3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv\n\nclean:\n\trm -f output/distances.csv\n\n.PHONY: all clean\n' > Makefile
+
+cat > README.md <<'README'
+# Stellar Distance from Gaia Parallax
+
+Compute distances to nearby stars using parallax measurements from the
+[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
+
+**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
+**Output**: Source IDs and computed distances (parsecs).
+**Method**: `distance_pc = 1000 / parallax_mas`
+
+## Reproduce
+
+    make
+README
+
+git add Makefile README.md
+git commit -m "Add Makefile encoding the full pipeline"
+```
+
 We encode the pipeline as `make` targets with their dependencies:
 
 ```makefile
@@ -223,6 +443,112 @@ Now `make` is the single command to reproduce everything. We update the README a
 **Advances**: A (executable specification — not just documentation but a runnable recipe)
 
 ### 7. Add a test
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+mkdir -p test
+
+cat > test/fetch_reference_distances.sh <<'TESTSH'
+#!/bin/sh
+# Fetch GSP-Phot reference distances for the exact stars we computed
+set -eu
+
+ids=$(tail -n +2 output/distances.csv | cut -d, -f1 | paste -sd,)
+
+curl -s -o test/reference_distances.csv \
+  --data-urlencode "REQUEST=doQuery" \
+  --data-urlencode "LANG=ADQL" \
+  --data-urlencode "FORMAT=csv" \
+  --data-urlencode "QUERY=SELECT source_id, distance_gspphot FROM gaiadr3.gaia_source WHERE source_id IN ($ids) AND distance_gspphot IS NOT NULL" \
+  "https://gea.esac.esa.int/tap-server/tap/sync"
+
+echo "Fetched $(tail -n +2 test/reference_distances.csv | wc -l) reference distances"
+TESTSH
+chmod +x test/fetch_reference_distances.sh
+
+cat > test/verify_distances.py <<'PYEOF'
+#!/usr/bin/env python3
+"""Compare our computed distances against Gaia GSP-Phot reference distances."""
+
+import csv
+import sys
+
+
+def main():
+    computed = {}
+    with open("output/distances.csv") as f:
+        for row in csv.DictReader(f):
+            computed[row["source_id"]] = float(row["distance_pc"])
+
+    reference = {}
+    with open("test/reference_distances.csv") as f:
+        for row in csv.DictReader(f):
+            reference[row["source_id"]] = float(row["distance_gspphot"])
+
+    matched = set(computed) & set(reference)
+    if not matched:
+        print("ERROR: no matching source_ids between computed and reference")
+        sys.exit(1)
+
+    max_pct_err = 0
+    failures = []
+    for sid in sorted(matched):
+        c = computed[sid]
+        r = reference[sid]
+        pct_err = abs(c - r) / r * 100
+        max_pct_err = max(max_pct_err, pct_err)
+        if pct_err > 0.5:
+            failures.append((sid, c, r, pct_err))
+
+    print(f"Compared {len(matched)} stars")
+    print(f"Max error: {max_pct_err:.2f}%")
+
+    if failures:
+        print(f"\nFAILED: {len(failures)} stars differ by >0.5%:")
+        for sid, c, r, pct in failures:
+            print(f"  {sid}: computed={c:.4f} ref={r:.4f} err={pct:.1f}%")
+        sys.exit(1)
+    else:
+        print("PASSED: all within 0.5%")
+
+
+if __name__ == "__main__":
+    main()
+PYEOF
+
+# Update Makefile with test target
+printf '.POSIX:\n\nall: output/distances.csv\n\nraw/gaia_nearby.csv:\n\tpython3 code/fetch_data.py raw/gaia_nearby.csv\n\noutput/distances.csv: raw/gaia_nearby.csv code/compute_distances.py\n\tpython3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv\n\ntest: output/distances.csv\n\t./test/fetch_reference_distances.sh\n\tpython3 test/verify_distances.py\n\nclean:\n\trm -f output/distances.csv\n\n.PHONY: all test clean\n' > Makefile
+
+cat > .gitignore <<'GI'
+.venv/
+test/reference_distances.csv
+GI
+
+cat > README.md <<'README'
+# Stellar Distance from Gaia Parallax
+
+Compute distances to nearby stars using parallax measurements from the
+[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
+
+**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
+**Output**: Source IDs and computed distances (parsecs).
+**Method**: `distance_pc = 1000 / parallax_mas`
+
+## Reproduce
+
+    make
+
+## Verify
+
+    make test
+README
+
+git add test/ Makefile .gitignore README.md
+git commit -m "Add verification test against Gaia GSP-Phot reference distances"
+
+make test
+```
 
 We write a verification script that fetches independent reference distances from Gaia's GSP-Phot pipeline and compares them to our computed values.
 `make test` runs it.
@@ -261,10 +587,67 @@ stellar-distance/
 
 ### 8. Declare and pin dependencies
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+cat > code/fetch_data.py <<'PYEOF'
+#!/usr/bin/env python3
+"""Fetch nearby star parallax data from Gaia DR3 via TAP query."""
+
+import requests
+import sys
+
+GAIA_TAP_URL = "https://gea.esac.esa.int/tap-server/tap/sync"
+
+QUERY = """\
+SELECT TOP {limit}
+    source_id, parallax
+FROM gaiadr3.gaia_source
+WHERE parallax > {min_parallax}
+    AND parallax_error / parallax < {max_error_ratio}
+ORDER BY parallax DESC
+"""
+
+
+def fetch(output_path, limit=100, min_parallax=10, max_error_ratio=0.1):
+    query = QUERY.format(
+        limit=limit,
+        min_parallax=min_parallax,
+        max_error_ratio=max_error_ratio,
+    )
+    resp = requests.get(GAIA_TAP_URL, params={
+        "REQUEST": "doQuery",
+        "LANG": "ADQL",
+        "FORMAT": "csv",
+        "QUERY": query,
+    })
+    resp.raise_for_status()
+
+    with open(output_path, "w") as f:
+        f.write(resp.text)
+
+    n_stars = resp.text.count("\n") - 1
+    print(f"Fetched {n_stars} stars -> {output_path}")
+
+
+if __name__ == "__main__":
+    output = sys.argv[1] if len(sys.argv) > 1 else "raw/gaia_nearby.csv"
+    fetch(output)
+PYEOF
+
+cat > pyproject.toml <<'TOML'
+[project]
+name = "stellar-distance"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+]
+TOML
+```
+
 Until now the scripts used only Python's standard library (urllib, csv), so there was nothing to declare.
 To demonstrate how dependencies are handled, we rewrite the fetch script to use `requests`:
-
-<!-- TODO: link to fetch_data.py rewrite commit once repo history is restructured -->
 
 ```python
 # fetch_data.py (abbreviated)
@@ -289,7 +672,39 @@ dependencies = ["requests"]
 ```
 
 ```sh
+# pragma: testrun full-build
 pip-compile --generate-hashes -o requirements.txt pyproject.toml
+```
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+cat > README.md <<'README'
+# Stellar Distance from Gaia Parallax
+
+Compute distances to nearby stars using parallax measurements from the
+[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
+
+**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
+**Output**: Source IDs and computed distances (parsecs).
+**Method**: `distance_pc = 1000 / parallax_mas`
+
+## Reproduce
+
+    make
+
+## Verify
+
+    make test
+
+## Requirements
+
+- Python >= 3.10
+- Dependencies declared in `pyproject.toml`; install with `pip install -r requirements.txt`
+README
+
+git add code/fetch_data.py pyproject.toml requirements.txt README.md
+git commit -m "Rewrite fetch with requests, declare and pin dependencies"
 ```
 
 There's a big difference between `requests` (any version) and `requests==2.32.5 --hash=sha256:...` (this exact build).
@@ -301,6 +716,38 @@ This is where Portability meets Tracking: the environment specification itself i
 **Advances**: P (host assumptions documented, reproducible environment), T (pinned versions are content-addressed)
 
 ### 9. Reproduce from scratch
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+cat > test/reproduce_from_scratch.sh <<'TESTSH'
+#!/bin/sh
+# Reproduce the full pipeline from a clean clone in a temp directory.
+set -eux
+PS4='> '
+
+repo_url="${1:?Usage: $0 <repo-url-or-path>}"
+
+cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
+echo "Working in: $(pwd)"
+
+git clone "$repo_url" stellar-distance
+cd stellar-distance
+
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+
+make
+make test
+
+echo "=== PASSED: reproduced from scratch ==="
+TESTSH
+chmod +x test/reproduce_from_scratch.sh
+
+git add test/reproduce_from_scratch.sh
+git commit -m "Add ephemeral reproduction script"
+```
 
 We write `test/reproduce_from_scratch.sh` — a script that clones the repository into a fresh temp directory, creates a virtual environment, installs dependencies, runs the pipeline, and runs the tests:
 
