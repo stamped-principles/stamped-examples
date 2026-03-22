@@ -402,20 +402,8 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 # pragma: render hidden
 printf '.POSIX:\n\nall: output/distances.csv\n\nraw/gaia_nearby.csv:\n\tpython3 code/fetch_data.py raw/gaia_nearby.csv\n\noutput/distances.csv: raw/gaia_nearby.csv code/compute_distances.py\n\tpython3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv\n\nclean:\n\trm -f output/distances.csv\n\n.PHONY: all clean\n' > Makefile
 
-cat > README.md <<'README'
-# Stellar Distance from Gaia Parallax
-
-Compute distances to nearby stars using parallax measurements from the
-[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
-
-**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
-**Output**: Source IDs and computed distances (parsecs).
-**Method**: `distance_pc = 1000 / parallax_mas`
-
-## Reproduce
-
-    make
-README
+# Update README: replace manual commands with 'make'
+sed -i '/^    python3 code\/fetch_data\.py/,/^    python3 code\/compute_distances\.py/c\    make' README.md
 
 git add Makefile README.md
 git commit -m "Add Makefile encoding the full pipeline"
@@ -517,27 +505,17 @@ if __name__ == "__main__":
     main()
 PYEOF
 
-# Update Makefile with test target
-printf '.POSIX:\n\nall: output/distances.csv\n\nraw/gaia_nearby.csv:\n\tpython3 code/fetch_data.py raw/gaia_nearby.csv\n\noutput/distances.csv: raw/gaia_nearby.csv code/compute_distances.py\n\tpython3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv\n\ntest: output/distances.csv\n\t./test/fetch_reference_distances.sh\n\tpython3 test/verify_distances.py\n\nclean:\n\trm -f output/distances.csv\n\n.PHONY: all test clean\n' > Makefile
+# Add test target to Makefile
+sed -i 's/^\.PHONY: all clean/.PHONY: all test clean/' Makefile
+printf '\ntest: output/distances.csv\n\t./test/fetch_reference_distances.sh\n\tpython3 test/verify_distances.py\n' >> Makefile
 
 cat > .gitignore <<'GI'
 .venv/
 test/reference_distances.csv
 GI
 
-cat > README.md <<'README'
-# Stellar Distance from Gaia Parallax
-
-Compute distances to nearby stars using parallax measurements from the
-[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
-
-**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
-**Output**: Source IDs and computed distances (parsecs).
-**Method**: `distance_pc = 1000 / parallax_mas`
-
-## Reproduce
-
-    make
+# Append Verify section to README
+cat >> README.md <<'README'
 
 ## Verify
 
@@ -679,23 +657,8 @@ pip-compile --generate-hashes -o requirements.txt pyproject.toml
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-cat > README.md <<'README'
-# Stellar Distance from Gaia Parallax
-
-Compute distances to nearby stars using parallax measurements from the
-[Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
-
-**Input**: Gaia source IDs and parallax (milliarcseconds), fetched via TAP query.
-**Output**: Source IDs and computed distances (parsecs).
-**Method**: `distance_pc = 1000 / parallax_mas`
-
-## Reproduce
-
-    make
-
-## Verify
-
-    make test
+# Append Requirements section to README
+cat >> README.md <<'README'
 
 ## Requirements
 
