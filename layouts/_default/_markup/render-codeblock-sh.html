@@ -7,6 +7,7 @@
 {{- $filtered := slice -}}
 {{- $testrunID := "" -}}
 {{- $materializeList := slice -}}
+{{- $isHidden := false -}}
 {{- range split $raw "\n" -}}
   {{- if findRE `^\s*#\s*pragma:` . -}}
     {{- /* Extract testrun and materialize values before stripping */ -}}
@@ -18,14 +19,20 @@
       {{- $repo := replaceRE `^#\s*pragma:\s*materialize\s+` "" $trimmed -}}
       {{- $materializeList = $materializeList | append $repo -}}
     {{- end -}}
+    {{- if findRE `^#\s*pragma:\s*render\s+hidden` $trimmed -}}
+      {{- $isHidden = true -}}
+    {{- end -}}
   {{- else -}}
     {{- $filtered = $filtered | append . -}}
   {{- end -}}
 {{- end -}}
+{{- if and $isHidden (not (getenv "HUGO_SHOW_HIDDEN")) -}}
+  {{- /* Hidden block: no HTML output */ -}}
+{{- else -}}
 {{- $code := delimit $filtered "\n" -}}
 {{- $isScript := hasPrefix $code "#!" -}}
-{{- $class := cond $isScript "codeblock-script" "codeblock-snippet" -}}
-{{- $label := cond $isScript "script" "snippet" -}}
+{{- $class := cond $isHidden "codeblock-hidden" (cond $isScript "codeblock-script" "codeblock-snippet") -}}
+{{- $label := cond $isHidden "hidden" (cond $isScript "script" "snippet") -}}
 <div class="codeblock-wrapper {{ $class }}">
   <span class="codeblock-label">{{ $label }}</span>
   {{- highlight $code .Type .Options -}}
@@ -39,4 +46,5 @@
       <a href="{{ $repoURL }}/tree/examples/{{ $fileStem }}/{{ $testrunID }}/{{ $repo }}">Browse <code>{{ $repo }}</code></a>
     {{- end -}}
   </div>
+{{- end -}}
 {{- end -}}

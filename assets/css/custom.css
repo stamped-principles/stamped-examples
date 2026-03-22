@@ -238,6 +238,17 @@ a[href*="/aspirations/"].rounded-md:hover {
   color: #ffffff;
 }
 
+/* ── hidden: dashed purple (only visible with HUGO_SHOW_HIDDEN) ── */
+.codeblock-hidden {
+  border-left-color: #7c3aed;
+  border-left-style: dashed;
+  opacity: 0.7;
+}
+.codeblock-hidden .codeblock-label {
+  background-color: #7c3aed;
+  color: #ffffff;
+}
+
 /* ── example branch links ────────────────────────────────── */
 .example-branch-links {
   margin-top: -0.75rem;

@@ -31,6 +31,9 @@ jobs:
       - name: Install tox
         run: pip install tox
 
+      - name: Install DataLad and pip-tools
+        run: pip install datalad pip-tools requests
+
       - name: Install Hugo
         env:
           HUGO_VERSION: "0.153.0"
