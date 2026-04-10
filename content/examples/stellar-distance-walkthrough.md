@@ -43,7 +43,7 @@ No new frameworks.
 No heavyweight infrastructure.
 Just a series of small, practical steps, each one solving a concrete problem: "which version of the data did I use?", "why doesn't this run on my colleague's laptop?", "how do I prove these numbers are right?"
 
-Along the way, we note which STAMPED properties each step improves.
+Along the way, we note which [STAMPED]({{< ref "principles" >}}) properties (Self-contained, Tracked, Actionable, Modular, Portable, Ephemeral, Distributable) each step improves.
 By the end, we have a research object that passes a from-scratch reproduction test in a throwaway directory.
 Most of the steps turn out to be things we might already be doing, just named and organized.
 
@@ -122,7 +122,7 @@ Proxima Centauri shows up at ~1.30 parsecs. Looks right!
 
 We put the script and its output in a directory and run `git init`.
 Two things happen at once: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
-The project boundary is one way to follow the don't look up rule (S.1): everything needed for this work lives inside one root, and nothing outside should be implicitly required.
+The project boundary follows the "don't look up" rule: everything needed for this work lives inside one root, and nothing outside should be implicitly required.
 Git gives us content-addressed version control, so we can track changes over time and identify each project state by its commit.
 
 From now on, every change is recorded and reversible.
@@ -581,6 +581,7 @@ stellar-distance/
 ├── test/
 │   ├── fetch_reference_distances.sh
 │   └── verify_distances.py
+├── .gitignore
 ├── Makefile
 └── README.md
 ```
@@ -774,6 +775,7 @@ stellar-distance/
 │   ├── fetch_reference_distances.sh
 │   ├── verify_distances.py
 │   └── reproduce_from_scratch.sh
+├── .gitignore
 ├── Makefile
 ├── README.md
 ├── pyproject.toml
