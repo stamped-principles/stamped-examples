@@ -99,6 +99,7 @@ PYEOF
 python3 compute_everything.py
 git add compute_everything.py distances.csv
 git commit -m "Initial analysis: compute stellar distances"
+git tag stellar-step-1
 ```
 
 We start with a single Python script that does everything: queries the Gaia TAP API, fetches parallax measurements for 100 nearby stars, computes distances, and writes a CSV.
@@ -259,6 +260,12 @@ datalad run \
   "python3 fetch_data.py gaia_nearby.csv"
 ```
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+git tag stellar-step-2
+```
+
 This records exactly what command produced the data, creating a machine-readable provenance record in the commit message.
 The data is no longer just "a CSV that appeared somehow" — it has a documented origin that anyone can inspect and replay with `datalad rerun`.
 
@@ -295,6 +302,7 @@ git mv compute_distances.py code/
 git mv gaia_nearby.csv raw/
 git mv distances.csv output/
 git commit -m "Organize into code/, raw/, output/"
+git tag stellar-step-3
 ```
 
 We create `code/`, `raw/`, and `output/` directories, and move each file to where it belongs:
@@ -340,6 +348,12 @@ datalad run \
   "python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
 ```
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+git tag stellar-step-4
+```
+
 The `-i` flags declare inputs and `-o` declares outputs.
 Now the full pipeline — from raw data to final results — has machine-readable provenance.
 Anyone can inspect the commit messages to see exactly how each file was produced.
@@ -369,6 +383,7 @@ README
 
 git add README.md
 git commit -m "Add README with reproduction instructions"
+git tag stellar-step-5
 ```
 
 We add a README explaining what this project does, what the inputs and outputs are, and how to run it:
@@ -407,6 +422,7 @@ sed -i '/^    python3 code\/fetch_data\.py/,/^    python3 code\/compute_distance
 
 git add Makefile README.md
 git commit -m "Add Makefile encoding the full pipeline"
+git tag stellar-step-6
 ```
 
 We encode the pipeline as `make` targets with their dependencies:
@@ -524,6 +540,7 @@ README
 
 git add test/ Makefile .gitignore README.md
 git commit -m "Add verification test against Gaia GSP-Phot reference distances"
+git tag stellar-step-7
 
 make test
 ```
@@ -668,6 +685,7 @@ README
 
 git add code/fetch_data.py pyproject.toml requirements.txt README.md
 git commit -m "Rewrite fetch with requests, declare and pin dependencies"
+git tag stellar-step-8
 ```
 
 There's a big difference between `requests` (any version) and `requests==2.32.5 --hash=sha256:...` (this exact build).
@@ -710,6 +728,7 @@ chmod +x test/reproduce_from_scratch.sh
 
 git add test/reproduce_from_scratch.sh
 git commit -m "Add ephemeral reproduction script"
+git tag stellar-step-9
 ```
 
 We write `test/reproduce_from_scratch.sh` — a script that clones the repository into a fresh temp directory, creates a virtual environment, installs dependencies, runs the pipeline, and runs the tests:
