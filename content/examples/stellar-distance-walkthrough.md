@@ -112,20 +112,12 @@ git tag stellar-step-1
 
 We start with a single Python script that does everything: queries the Gaia TAP API, fetches parallax measurements for 100 nearby stars, computes distances, and writes a CSV.
 
-The [full script](https://github.com/asmacdo/STAMPED-stellar-distances/blob/0d95ecc/compute_everything.py) fetches data and computes distances in one pass:
+{{< snippet id="compute-everything" lang="python" lines="1-2,9-15,31-32" >}}
 
-```python
-# compute_everything.py (abbreviated)
-QUERY = "SELECT TOP 100 source_id, parallax FROM gaiadr3.gaia_source ..."
+The above is abbreviated. To follow along, see the [full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-1).
 
-# ... fetch from Gaia TAP API ...
-
-for star in csv.DictReader(io.StringIO(raw)):
-    distance_pc = 1000.0 / float(star["parallax"])
-```
-
-Run it, get a `distances.csv` with 100 rows.
-Proxima Centauri shows up at ~1.30 parsecs — looks right.
+When we run `python3 compute_everything.py`, we get a `distances.csv` with 100 rows.
+Proxima Centauri shows up at ~1.30 parsecs. Looks right!
 
 We put the script and its output in a directory and run `git init`.
 Two things happen at once: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
@@ -141,7 +133,7 @@ stellar-distance/
 └── distances.csv
 ```
 
-This is where most analyses live forever — and that's fine for exploration.
+This is where most analyses live forever, and that's fine for exploration.
 But what happens when we come back in six months and can't remember which query parameters we used?
 When a collaborator asks "how do I run this?"
 When a reviewer asks us to recompute with updated data?
