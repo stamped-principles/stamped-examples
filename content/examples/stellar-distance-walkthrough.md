@@ -844,7 +844,7 @@ stellar-distance/
 | **S** Self-contained | All code, data, and instructions under one root. README describes the project. Versioned local copy of fetched data. |
 | **T** Tracked | Git tracks all changes. `datalad run` records provenance for both fetch and analysis. Dependencies hash-pinned. |
 | **A** Actionable | `make` reproduces results. `make test` verifies. `datalad rerun` replays provenance. README documents the workflow. |
-| **M** Modular | code/, raw/, output/, test/ are logically separated. |
+| **M** Modular | `code/`, `raw/`, `output/`, `test/` are logically separated. |
 | **P** Portable | Dependencies declared in pyproject.toml, pinned in requirements.txt with hashes. No hardcoded paths. |
 | **E** Ephemeral | Reproduction script runs the full pipeline in a fresh temp directory with no prior state. |
 | **D** Distributable | Repository on GitHub. Anyone can clone and reproduce. |
