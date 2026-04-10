@@ -267,9 +267,9 @@ Now we do something important: instead of just running `fetch_data.py`, we wrap 
 ```sh
 # pragma: testrun full-build
 datalad run \
-  -m "Fetch 100 nearest stars from Gaia DR3" \
-  -o "gaia_nearby.csv" \
-  "python3 fetch_data.py gaia_nearby.csv"
+  --message "Fetch 100 nearest stars from Gaia DR3" \
+  --output gaia_nearby.csv \
+  python3 fetch_data.py gaia_nearby.csv
 ```
 
 ```sh
@@ -353,11 +353,11 @@ Just as we used `datalad run` for the fetch in step 2, we now use it for the ana
 ```sh
 # pragma: testrun full-build
 datalad run \
-  -m "Compute distances for 100 nearest stars" \
-  -i "raw/gaia_nearby.csv" \
-  -i "code/compute_distances.py" \
-  -o "output/distances.csv" \
-  "python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
+  --message "Compute distances for 100 nearest stars" \
+  --input raw/gaia_nearby.csv \
+  --input code/compute_distances.py \
+  --output output/distances.csv \
+  python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 ```
 
 ```sh
@@ -366,7 +366,7 @@ datalad run \
 git tag stellar-step-4
 ```
 
-The `-i` flags declare inputs and `-o` declares outputs.
+The `--input` flags declare inputs and `--output` declares outputs.
 Now the full pipeline — from raw data to final results — has machine-readable provenance.
 Anyone can inspect the commit messages to see exactly how each file was produced.
 
@@ -870,9 +870,9 @@ We update the query parameters in `fetch_data.py`, then re-run just the fetch:
 
 ```sh
 datalad run \
-  -m "Fetch 200 nearest stars from Gaia DR3" \
-  -o "raw/gaia_nearby.csv" \
-  "python3 code/fetch_data.py raw/gaia_nearby.csv"
+  --message "Fetch 200 nearest stars from Gaia DR3" \
+  --output raw/gaia_nearby.csv \
+  python3 code/fetch_data.py raw/gaia_nearby.csv
 ```
 
 The new data is committed with a fresh provenance record.
