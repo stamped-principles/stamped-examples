@@ -208,6 +208,12 @@ def import_as_local_branch(repo_dir: Path, target_branch: str) -> None:
         check=True,
         cwd=str(toplevel),
     )
+    # Also import any tags from the example repo.
+    subprocess.run(
+        ["git", "fetch", str(repo_dir), "+refs/tags/*:refs/tags/*"],
+        check=True,
+        cwd=str(toplevel),
+    )
     print(f"  branch → {target_branch}")
 
 
@@ -244,8 +250,9 @@ def push_branches_and_notes(remote: str) -> None:
 
     # Build refspecs
     refspecs = [f"refs/heads/{b}:refs/heads/{b}" for b in branches]
-    # Also push notes
+    # Also push notes and tags
     refspecs.append(f"{NOTES_REF}:{NOTES_REF}")
+    refspecs.append("+refs/tags/*:refs/tags/*")
 
     print(f"Pushing {len(branches)} branch(es) + notes to {remote}…")
     subprocess.run(

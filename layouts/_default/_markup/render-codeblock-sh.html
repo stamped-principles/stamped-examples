@@ -1,5 +1,5 @@
 {{- /* render-codeblock-sh: handles ```sh blocks.
-     - Strips lines matching "# pragma:" before rendering.
+     - Strips lines matching "# pragma:" and "# snippet:" / "# /snippet" before rendering.
      - Detects shebang (#!) → "script" label; otherwise → "snippet" label.
      - If "# pragma: materialize" is present, emits browse-example links.
 */ -}}
@@ -9,7 +9,7 @@
 {{- $materializeList := slice -}}
 {{- $isHidden := false -}}
 {{- range split $raw "\n" -}}
-  {{- if findRE `^\s*#\s*pragma:` . -}}
+  {{- if or (findRE `^\s*#\s*pragma:` .) (findRE `^\s*#\s*snippet:` .) (findRE `^\s*#\s*/snippet` .) -}}
     {{- /* Extract testrun and materialize values before stripping */ -}}
     {{- $trimmed := trim . " " -}}
     {{- if findRE `^#\s*pragma:\s*testrun\s+` $trimmed -}}
