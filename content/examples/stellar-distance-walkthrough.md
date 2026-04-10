@@ -58,6 +58,7 @@ cd stellar-distance
 git config user.email "demo@example.com"
 git config user.name "Demo User"
 
+# snippet: compute-everything
 cat > compute_everything.py <<'PYEOF'
 #!/usr/bin/env python3
 """Quick proof of concept: fetch Gaia parallax data and compute distances."""
@@ -95,6 +96,7 @@ with open("distances.csv", "w", newline="") as f:
 
 print("Done — wrote distances.csv")
 PYEOF
+# /snippet
 
 python3 compute_everything.py
 git add compute_everything.py distances.csv
@@ -147,6 +149,7 @@ Each step that follows addresses one of these failure modes.
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
+# snippet: fetch-data
 cat > fetch_data.py <<'PYEOF'
 #!/usr/bin/env python3
 """Fetch nearby star parallax data from Gaia DR3 via TAP query."""
@@ -193,7 +196,9 @@ if __name__ == "__main__":
     output = sys.argv[1] if len(sys.argv) > 1 else "gaia_nearby.csv"
     fetch(output)
 PYEOF
+# /snippet
 
+# snippet: compute-distances
 cat > compute_distances.py <<'PYEOF'
 #!/usr/bin/env python3
 """Compute stellar distances from Gaia parallax measurements."""
@@ -223,6 +228,7 @@ def main(input_path, output_path):
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2])
 PYEOF
+# /snippet
 
 git rm compute_everything.py
 git rm distances.csv
@@ -365,6 +371,7 @@ Anyone can inspect the commit messages to see exactly how each file was produced
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
+# snippet: readme
 cat > README.md <<'README'
 # Stellar Distance from Gaia Parallax
 
@@ -380,6 +387,7 @@ Compute distances to nearby stars using parallax measurements from the
     python3 code/fetch_data.py raw/gaia_nearby.csv
     python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 README
+# /snippet
 
 git add README.md
 git commit -m "Add README with reproduction instructions"
@@ -415,7 +423,24 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-printf '.POSIX:\n\nall: output/distances.csv\n\nraw/gaia_nearby.csv:\n\tpython3 code/fetch_data.py raw/gaia_nearby.csv\n\noutput/distances.csv: raw/gaia_nearby.csv code/compute_distances.py\n\tpython3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv\n\nclean:\n\trm -f output/distances.csv\n\n.PHONY: all clean\n' > Makefile
+# snippet: makefile
+cat > Makefile <<'MAKE'
+.POSIX:
+
+all: output/distances.csv
+
+raw/gaia_nearby.csv:
+	python3 code/fetch_data.py raw/gaia_nearby.csv
+
+output/distances.csv: raw/gaia_nearby.csv code/compute_distances.py
+	python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+
+clean:
+	rm -f output/distances.csv
+
+.PHONY: all clean
+MAKE
+# /snippet
 
 # Update README: replace manual commands with 'make'
 sed -i '/^    python3 code\/fetch_data\.py/,/^    python3 code\/compute_distances\.py/c\    make' README.md
@@ -453,6 +478,7 @@ Now `make` is the single command to reproduce everything. We update the README a
 # pragma: render hidden
 mkdir -p test
 
+# snippet: fetch-reference
 cat > test/fetch_reference_distances.sh <<'TESTSH'
 #!/bin/sh
 # Fetch GSP-Phot reference distances for the exact stars we computed
@@ -469,8 +495,10 @@ curl -s -o test/reference_distances.csv \
 
 echo "Fetched $(tail -n +2 test/reference_distances.csv | wc -l) reference distances"
 TESTSH
+# /snippet
 chmod +x test/fetch_reference_distances.sh
 
+# snippet: verify-distances
 cat > test/verify_distances.py <<'PYEOF'
 #!/usr/bin/env python3
 """Compare our computed distances against Gaia GSP-Phot reference distances."""
@@ -520,6 +548,7 @@ def main():
 if __name__ == "__main__":
     main()
 PYEOF
+# /snippet
 
 # Add test target to Makefile
 sed -i 's/^\.PHONY: all clean/.PHONY: all test clean/' Makefile
@@ -585,6 +614,7 @@ stellar-distance/
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
+# snippet: fetch-data-requests
 cat > code/fetch_data.py <<'PYEOF'
 #!/usr/bin/env python3
 """Fetch nearby star parallax data from Gaia DR3 via TAP query."""
@@ -629,7 +659,9 @@ if __name__ == "__main__":
     output = sys.argv[1] if len(sys.argv) > 1 else "raw/gaia_nearby.csv"
     fetch(output)
 PYEOF
+# /snippet
 
+# snippet: pyproject
 cat > pyproject.toml <<'TOML'
 [project]
 name = "stellar-distance"
@@ -639,6 +671,7 @@ dependencies = [
     "requests",
 ]
 TOML
+# /snippet
 ```
 
 Until now the scripts used only Python's standard library (urllib, csv), so there was nothing to declare.
@@ -701,6 +734,7 @@ This is where Portability meets Tracking: the environment specification itself i
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
+# snippet: reproduce
 cat > test/reproduce_from_scratch.sh <<'TESTSH'
 #!/bin/sh
 # Reproduce the full pipeline from a clean clone in a temp directory.
@@ -724,6 +758,7 @@ make test
 
 echo "=== PASSED: reproduced from scratch ==="
 TESTSH
+# /snippet
 chmod +x test/reproduce_from_scratch.sh
 
 git add test/reproduce_from_scratch.sh
