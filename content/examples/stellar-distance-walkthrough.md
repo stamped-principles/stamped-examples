@@ -837,7 +837,7 @@ DataLad subdatasets take modularity further.
 The raw data could live in its own independently versioned dataset:
 
 ```sh
-datalad clone <data-url> raw/
+datalad clone -d . DATA_URL raw/
 ```
 
 A colleague running a different analysis on the same stars would `datalad install` the data module rather than re-fetching from the API.
@@ -845,6 +845,7 @@ The parent dataset records which exact version of each subdataset it depends on,
 
 ### Containers for portability and ephemerality
 
+Our `requirements.txt` pins Python packages, but what about the Python version itself? Or the OS libraries it links against?
 A Dockerfile (pinned by image digest) freezes the OS and Python version.
 Running the pipeline inside a disposable container validates that the specifications are complete.
 If it works in a fresh container, it's not relying on anything from our machine.
@@ -852,11 +853,54 @@ See [Container venv overlay for Python development]({{< ref "examples/container-
 
 ### CI for ephemeral validation
 
-A GitHub Actions workflow that clones, installs, and runs `make test` on every push.
-This catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
+Step 9's reproduction test proves the pipeline works from scratch, but only when we remember to run it.
+A GitHub Actions workflow that clones, installs, and runs `make test` on every push catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
 
 ### Archival distribution
 
-Deposit the repository on [Zenodo](https://zenodo.org/) for a DOI.
+GitHub is where we collaborate, but repositories can be deleted, reorganized, or made private.
+For long-term citability, deposit the repository on [Zenodo](https://zenodo.org/) for a DOI.
 Push the container image to a registry.
 Mirror data to multiple remotes so no single point of failure breaks reproducibility.
+
+{{< mermaid >}}
+graph TD
+    subgraph external resources
+        direction LR
+        TAP[("Gaia TAP server<br/>(source data)")]
+        PyPI[("PyPI<br/>(dependencies)")]
+    end
+    subgraph local machine
+        direction LR
+        P["research project<br/>(origin of work)"]
+        E["ephemeral clone<br/>(verify reproducibility)"]
+        style E stroke-dasharray: 5 5
+        E2["ephemeral clone<br/>(verify reproducibility)"]
+        style E2 stroke-dasharray: 5 5
+        P -- "code/reproduce_from_scratch.sh $PWD" --> E
+    end
+    subgraph sharing and archival
+        direction LR
+        G["GitHub<br/>(collaborate & share)"]
+        Z["Zenodo<br/>(long-term archive)"]
+        D["DOI registrar"]
+        G -- "archive a copy" --> Z
+        Z -. "points" .-> G
+        Z -. "mints" .-> D
+    end
+    TAP -- "datalad run<br/>(fetch parallax data)" --> P
+    PyPI -- "pip install -r<br/>requirements.txt" --> E
+    PyPI -- "pip install -r<br/>requirements.txt" --> E2
+    P -- "git push" --> G
+    D -. "resolves to" .-> Z
+    G -- "git clone;<br/>make" --> E2
+{{< /mermaid >}}
+
+## Conclusion
+
+We started with a script that worked on one machine and ended with a research object that anyone can clone, run, verify, and cite.
+None of the individual steps were large: split some files, add a Makefile, write a test, pin dependencies.
+Each one addressed a specific failure mode: "I can't remember how to run this," "it doesn't work on your machine," "how do I know the numbers are right?"
+
+The STAMPED properties gave us a vocabulary for those failure modes and a way to check our progress.
+Not every project needs every step, but knowing the spectrum makes it easier to decide what's worth doing next.
