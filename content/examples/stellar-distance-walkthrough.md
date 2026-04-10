@@ -275,8 +275,7 @@ It creates a normal git commit whose message includes a machine-readable run rec
 stellar-distance/
 ├── compute_distances.py
 ├── fetch_data.py
-├── gaia_nearby.csv
-└── distances.csv
+└── gaia_nearby.csv
 ```
 
 **Advances**: T (programmatic provenance), S (versioned local copy of external data), A (provenance is re-executable)
@@ -877,7 +876,7 @@ graph TD
         style E stroke-dasharray: 5 5
         E2["ephemeral clone<br/>(verify reproducibility)"]
         style E2 stroke-dasharray: 5 5
-        P -- "code/reproduce_from_scratch.sh $PWD" --> E
+        P -- "test/reproduce_from_scratch.sh $PWD" --> E
     end
     subgraph sharing and archival
         direction LR
