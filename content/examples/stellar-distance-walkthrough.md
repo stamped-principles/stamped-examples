@@ -18,12 +18,18 @@ params:
 #!/bin/sh
 # pragma: testrun full-build
 # pragma: render hidden
-# pragma: requires sh git python3 curl make pip-compile datalad
+# pragma: requires sh git python3 curl make
 # pragma: timeout 600
 # pragma: materialize stellar-distance
 
 set -eux
 PS4='> '
+
+# Build environment — tools needed by later steps
+python3 -m venv "${TMPDIR:-/tmp}/.build-env"
+. "${TMPDIR:-/tmp}/.build-env/bin/activate"
+pip install pip-tools datalad requests
+
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
 ```
 
