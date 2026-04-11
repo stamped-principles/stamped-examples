@@ -25,12 +25,13 @@ params:
 set -eux
 PS4='> '
 
-# Build environment — tools needed by later steps
-python3 -m venv "${TMPDIR:-/tmp}/.build-env"
-. "${TMPDIR:-/tmp}/.build-env/bin/activate"
-pip install pip-tools datalad requests
-
+# Random temp dir for containment and security (no deterministic paths under /tmp)
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
+
+# Build venv — tools needed by later steps
+python3 -m venv .venv
+. .venv/bin/activate
+pip install pip-tools datalad requests
 ```
 
 ## What we're building
