@@ -116,7 +116,7 @@ We start with a single Python script that does everything: queries the Gaia TAP 
 
 {{< snippet id="compute-everything" lang="python" lines="1-2,9-15,31-32" >}}
 
-The above is abbreviated. To follow along, see the [full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-1).
+The above is abbreviated. To follow along, see the {{< step-link tag="stellar-step-1" text="full project at this step" >}}.
 
 When we run `python3 compute_everything.py`, we get a `distances.csv` with 100 rows.
 Proxima Centauri shows up at ~1.30 parsecs. Looks right!
@@ -243,7 +243,7 @@ We split it into two scripts: `fetch_data.py` to retrieve data from Gaia, and `c
 
 {{< snippet id="compute-distances" lang="python" lines="1-2,8,16-17" >}}
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-2)
+{{< step-link tag="stellar-step-2" >}}
 
 Now we do something important: instead of just running `fetch_data.py`, we wrap it with `datalad run`:
 
@@ -316,7 +316,7 @@ Code is what we write, raw is what we fetch, output is what we compute.
 The role of each file is obvious at a glance.
 When something breaks, we know where to look.
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-3)
+{{< step-link tag="stellar-step-3" >}}
 
 This is Modularity at its simplest: not separate repositories, just separate directories with clear roles.
 
@@ -354,7 +354,7 @@ The `--input` flags declare inputs and `--output` declares outputs.
 Now the full pipeline, from raw data to final results, has machine-readable provenance.
 Anyone can inspect the commit messages to see exactly how each file was produced.
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-4)
+{{< step-link tag="stellar-step-4" >}}
 
 **Advances**: T (full pipeline provenance), A (analysis is re-executable via `datalad rerun`)
 
@@ -390,7 +390,7 @@ We add a README explaining what this project does, what the inputs and outputs a
 
 {{< snippet id="readme" lang="markdown" >}}
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-5)
+{{< step-link tag="stellar-step-5" >}}
 
 Without a README, the project is only usable by the person who wrote it, and only while they remember how.
 A README makes it usable by anyone who can read.
@@ -434,7 +434,7 @@ We encode the pipeline as `make` targets with their dependencies:
 
 {{< snippet id="makefile" lang="makefile" >}}
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-6)
+{{< step-link tag="stellar-step-6" >}}
 
 The README *says* how to run the pipeline.
 The Makefile *does* it.
@@ -562,7 +562,7 @@ Max error: 0.27%
 PASSED: all within 0.5%
 ```
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-7)
+{{< step-link tag="stellar-step-7" >}}
 
 Without verification, a research object asks others to trust the results.
 A test makes the claim falsifiable: anyone can run `make test` and see for themselves.
@@ -693,7 +693,7 @@ The second is a distribution-ready specification: it says exactly what bytes to 
 Hash pinning means even if a package is re-uploaded with the same version number, the install rejects it rather than silently using different code.
 This is where Portability meets Tracking: the environment specification itself is content-addressed.
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-8)
+{{< step-link tag="stellar-step-8" >}}
 
 **Advances**: P (host assumptions documented, reproducible environment), T (pinned versions are content-addressed)
 
@@ -739,7 +739,7 @@ We write `test/reproduce_from_scratch.sh`, a script that clones the repository i
 
 {{< snippet id="reproduce" lang="sh" >}}
 
-[Full project at this step](https://github.com/myyoda/principles-examples/tree/stellar-step-9)
+{{< step-link tag="stellar-step-9" >}}
 
 If it passes, the research object doesn't depend on anything from our machine. No accumulated state, no forgotten steps.
 The temp directory is thrown away afterward.

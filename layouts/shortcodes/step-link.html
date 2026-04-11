@@ -1,0 +1,7 @@
+{{- /* step-link: render a link to a materialized example branch at a given tag.
+     Derives repo URL from site.Params.article.editurl.
+     Params: tag (required), text (optional, default "Full project at this step"). */ -}}
+{{- $tag := .Get "tag" -}}
+{{- $text := .Get "text" | default "Full project at this step" -}}
+{{- $repoURL := replaceRE `/tree/.*$` "" site.Params.article.editurl -}}
+<a href="{{ $repoURL }}/tree/{{ $tag }}">{{ $text }}</a>
