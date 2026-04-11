@@ -28,11 +28,8 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install tox
-        run: pip install tox
-
-      - name: Install DataLad and pip-tools
-        run: pip install datalad pip-tools requests
+      - name: Install tox and test requirements
+        run: pip install tox -r requirements-test.txt
 
       - name: Install Hugo
         env:
