@@ -15,5 +15,5 @@ organized into directories. Portability is more actionable when environments can
 be instantiated from a specification (e.g., `singularity run`), not just
 documented in a README.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

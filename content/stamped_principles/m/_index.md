@@ -14,5 +14,5 @@ and supporting domain-specific standards (e.g., BIDS). Components may be
 included directly or linked as subdatasets (git submodules), each with its own
 independent version history.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

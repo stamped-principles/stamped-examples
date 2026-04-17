@@ -4,7 +4,7 @@ description: "Concrete examples demonstrating the STAMPED principles for idiomat
 ---
 
 This site is a companion resource to the
-[STAMPED paper](https://github.com/myyoda/principles-paper) on properties of
+[STAMPED paper](https://github.com/stamped-principles/stamped-paper) on properties of
 a reproducible research object. It provides concrete, pragmatic examples that
 demonstrate the seven STAMPED properties in practice -- from simple naming
 conventions to complex multi-tool workflows.
@@ -14,7 +14,7 @@ conventions to complex multi-tool workflows.
 STAMPED defines seven properties that characterize a well-formed reproducible
 research object -- a collection of data, code, and metadata that together
 represent a complete unit of research output.
-See the [paper](https://github.com/myyoda/principles-paper) for the full
+See the [paper](https://github.com/stamped-principles/stamped-paper) for the full
 treatment; the table below is a quick reference:
 
 | Property | Core idea |

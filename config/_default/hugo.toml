@@ -2,7 +2,7 @@
 # https://jpanther.github.io/congo/docs/getting-started/
 
 theme = "congo"
-baseURL = "https://myyoda.github.io/principles-examples/"
+baseURL = "https://stamped-principles.github.io/stamped-examples/"
 defaultContentLanguage = "en"
 
 enableRobotsTXT = true

@@ -1,11 +1,11 @@
-# CLAUDE.md — principles-examples
+# CLAUDE.md — stamped-examples
 
 Companion website to the STAMPED paper with runnable examples demonstrating
 Self-containment, Tracking, Actionability, Modularity, Portability,
 Ephemerality, and Distributability for dataset version control.
 
-- **Live site:** https://myyoda.github.io/principles-examples/
-- **Repo:** https://github.com/myyoda/principles-examples
+- **Live site:** https://stamped-principles.github.io/stamped-examples/
+- **Repo:** https://github.com/stamped-principles/stamped-examples
 - **License:** Apache 2.0
 
 ## Tech stack

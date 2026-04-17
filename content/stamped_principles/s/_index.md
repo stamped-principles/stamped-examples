@@ -12,5 +12,5 @@ Components may be included literally (files committed directly) or by reference
 tracked. Self-containment is the foundational property upon which the remaining
 STAMPED properties build.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

@@ -6,7 +6,7 @@ description: "The seven properties of a well-formed reproducible research object
 **STAMPED** defines seven properties that characterize a well-formed
 reproducible research object. The framework originates from the YODA principles
 and is described in full in the
-[STAMPED paper](https://github.com/myyoda/principles-paper).
+[STAMPED paper](https://github.com/stamped-principles/stamped-paper).
 
 - **S -- [Self-contained](s/)**: All modules and components essential to
   replicate results are within a single top-level boundary.

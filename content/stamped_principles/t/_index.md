@@ -13,5 +13,5 @@ produced or modified each component, what inputs were consumed, and what version
 of code and environment were involved. For code-driven modifications, provenance
 should be captured programmatically rather than by manual annotation.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.
