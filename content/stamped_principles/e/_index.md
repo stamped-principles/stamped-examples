@@ -19,5 +19,5 @@ clone on a system that meets its stated requirements (P). At the ideal end,
 every computation runs in a disposable environment that is created and destroyed
 per execution.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

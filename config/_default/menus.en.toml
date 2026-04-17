@@ -10,7 +10,7 @@
 
 [[main]]
   name = "GitHub"
-  url = "https://github.com/myyoda/principles-examples"
+  url = "https://github.com/stamped-principles/stamped-examples"
   weight = 50
 
 [[main]]

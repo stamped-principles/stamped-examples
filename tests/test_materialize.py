@@ -181,9 +181,9 @@ class TestScriptHash:
 
 class TestDetectRemoteUrl:
     def test_github_env(self):
-        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "myyoda/principles-examples"}):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "stamped-principles/stamped-examples"}):
             url = materialize_mod.detect_remote_url("origin")
-            assert url == "https://github.com/myyoda/principles-examples"
+            assert url == "https://github.com/stamped-principles/stamped-examples"
 
     def test_git_remote(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -241,11 +241,11 @@ class TestRewriteSubmoduleUrls:
             repo,
             "stamped-awk-evolution",
             "scenario-4",
-            "https://github.com/myyoda/principles-examples",
+            "https://github.com/stamped-principles/stamped-examples",
         )
 
         content = gitmodules.read_text()
-        assert "https://github.com/myyoda/principles-examples" in content
+        assert "https://github.com/stamped-principles/stamped-examples" in content
         assert "examples/stamped-awk-evolution/scenario-4/raw-data-work" in content
         assert "../raw-data.git" not in content
 

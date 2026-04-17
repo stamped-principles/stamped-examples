@@ -6,7 +6,7 @@ description: "About the STAMPED Properties Examples resource"
 ## Companion to the STAMPED paper
 
 This site is the companion resource to the
-[STAMPED paper](https://github.com/myyoda/principles-paper) ("STAMPED:
+[STAMPED paper](https://github.com/stamped-principles/stamped-paper) ("STAMPED:
 Properties of a Reproducible Research Object"). While the paper develops the
 framework and evaluates existing tools against it, this site provides the
 practical side: concrete, runnable examples that show how the properties look
@@ -64,7 +64,7 @@ Examples span a wide range of complexity:
 
 We welcome contributions of new examples, corrections, and improvements.
 The source for this site lives at
-<https://github.com/myyoda/principles-examples>. To contribute:
+<https://github.com/stamped-principles/stamped-examples>. To contribute:
 
 1. Fork the repository.
 2. Add or edit example pages under `content/examples/`.

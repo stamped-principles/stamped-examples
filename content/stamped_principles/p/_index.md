@@ -15,5 +15,5 @@ via containers (Docker, Singularity/Apptainer) or declarative package managers
 (Nix, Guix), what matters is that environments are specified, versioned, and
 available within the project.
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

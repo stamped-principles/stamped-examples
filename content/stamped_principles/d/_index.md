@@ -18,5 +18,5 @@ instructions, through persistent hosting on archival infrastructure (Zenodo,
 PyPI, conda-forge, DANDI) with frozen versions and content-addressed identifiers,
 to a fully self-contained archive (e.g., a built container or a zipped RO-Crate).
 
-See the [STAMPED paper](https://github.com/myyoda/principles-paper) for the
+See the [STAMPED paper](https://github.com/stamped-principles/stamped-paper) for the
 full treatment.

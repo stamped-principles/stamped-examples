@@ -16,5 +16,5 @@ title = "STAMPED Principles Examples"
   headline = "STAMPED Principles Examples"
   bio = "A companion resource to the STAMPED paper — concrete examples of Self-containment, Tracking, Actionability, Modularity, Portability, Ephemerality, and Distributability for dataset version control."
   links = [
-    { github = "https://github.com/myyoda/principles-examples" },
+    { github = "https://github.com/stamped-principles/stamped-examples" },
   ]
