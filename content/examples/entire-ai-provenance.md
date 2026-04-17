@@ -256,3 +256,7 @@ without requiring any change to the researcher's existing commit workflow.
 
 For a complementary approach to recording computational provenance through explicit
 run records, see [Recording Computational Provenance with datalad run]({{< ref "examples/datalad-run-provenance" >}}).
+
+# TODOs:
+- Replace the URL for the main company website, https://entire.dev, with https://entire.io/.
+- Provide reference to documentation at https://docs.entire.io/introduction
