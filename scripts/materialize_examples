@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -38,6 +39,7 @@ from snippet_parser import ScriptBlock, iter_script_blocks
 FIXED_EPOCH = "2000-01-01T00:00:00+00:00"
 
 CONTENT_DIR = Path("content/examples")
+DATA_DIR = Path("data")
 
 # Custom notes ref to avoid colliding with default refs/notes/commits.
 NOTES_REF = "refs/notes/materialize"
@@ -195,6 +197,25 @@ def rewrite_submodule_urls(
 # ---------------------------------------------------------------------------
 # Local branch creation
 # ---------------------------------------------------------------------------
+
+def _resolve_steps(repo_dir: Path) -> dict[str, str]:
+    """Return a ``{"step-1": sha, "step-2": sha, ...}`` mapping.
+
+    Each commit in the repo's history (oldest first) becomes a step.
+    """
+    result = subprocess.run(
+        ["git", "-C", str(repo_dir), "log", "--reverse", "--format=%H"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    steps = {}
+    for i, sha in enumerate(result.stdout.splitlines(), 1):
+        sha = sha.strip()
+        if sha:
+            steps[f"step-{i}"] = sha
+    return steps
+
 
 def import_as_local_branch(repo_dir: Path, target_branch: str) -> None:
     """Fetch *repo_dir*'s HEAD into a local branch in the current repo."""
@@ -394,13 +415,27 @@ def process_block(
                     repo_dir, block.file_stem, testrun_id, remote_url,
                 )
 
+            # Map commits (by position) to step names.
+            step_shas = _resolve_steps(repo_dir)
+
             if dry_run:
                 print(f"  dry-run: would create branch {bname}")
+                if step_shas:
+                    print(f"  dry-run: would write step data for {list(step_shas)}")
             elif worktrees_under:
                 create_worktree(repo_dir, bname, worktrees_under)
             else:
                 import_as_local_branch(repo_dir, bname)
                 store_hash_note(bname, hash_val)
+
+            # Write step→SHA mapping as a Hugo data file.
+            if step_shas and not dry_run:
+                DATA_DIR.mkdir(exist_ok=True)
+                data_file = DATA_DIR / f"{block.file_stem}.json"
+                data_file.write_text(
+                    json.dumps(step_shas, indent=2, sort_keys=True) + "\n",
+                )
+                print(f"  data → {data_file}")
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 

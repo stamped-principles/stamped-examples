@@ -92,6 +92,19 @@ class TestParsePragmas:
         result = parse_pragmas(code)
         assert result["testrun"] == ""
 
+    def test_render_hidden_pragma(self):
+        code = textwrap.dedent("""\
+            #!/bin/sh
+            # pragma: testrun full-build
+            # pragma: render hidden
+            # pragma: materialize stellar-distance
+            echo hello
+        """)
+        result = parse_pragmas(code)
+        assert result["render"] == "hidden"
+        assert result["testrun"] == "full-build"
+        assert result["materialize"] == ["stellar-distance"]
+
 
 class TestFenceRe:
     def test_matches_sh_block(self):
@@ -139,6 +152,84 @@ class TestIterScriptBlocks:
         md.write_text("```sh\n# pragma: testrun s1\necho hi\n```\n")
         blocks = list(iter_script_blocks(md))
         assert blocks[0].file_stem == "stamped-awk-evolution"
+
+    def test_multi_block_same_testrun(self, tmp_path):
+        """Multiple blocks sharing a testrun ID are concatenated."""
+        md = tmp_path / "example.md"
+        md.write_text(textwrap.dedent("""\
+            # Step 1
+
+            ```sh
+            #!/bin/sh
+            # pragma: testrun demo-1
+            # pragma: requires sh git
+            # pragma: materialize myrepo
+            set -eu
+            echo step1
+            ```
+
+            Some narrative text.
+
+            ```sh
+            # pragma: testrun demo-1
+            echo step2
+            ```
+
+            More narrative.
+
+            ```sh
+            # pragma: testrun demo-1
+            echo step3
+            ```
+        """))
+        blocks = list(iter_script_blocks(md))
+        assert len(blocks) == 1
+        assert "echo step1" in blocks[0].code
+        assert "echo step2" in blocks[0].code
+        assert "echo step3" in blocks[0].code
+        # First-wins for scalar pragmas
+        assert blocks[0].pragmas["testrun"] == "demo-1"
+        assert blocks[0].pragmas["requires"] == "sh git"
+        assert blocks[0].pragmas["materialize"] == ["myrepo"]
+
+    def test_multi_block_different_testruns(self, tmp_path):
+        """Blocks with different testrun IDs remain separate."""
+        md = tmp_path / "example.md"
+        md.write_text(textwrap.dedent("""\
+            ```sh
+            # pragma: testrun s1
+            echo one
+            ```
+
+            ```sh
+            # pragma: testrun s2
+            echo two
+            ```
+        """))
+        blocks = list(iter_script_blocks(md))
+        assert len(blocks) == 2
+        assert blocks[0].pragmas["testrun"] == "s1"
+        assert blocks[1].pragmas["testrun"] == "s2"
+
+    def test_multi_block_pragma_first_wins(self, tmp_path):
+        """First block's scalar pragmas take precedence."""
+        md = tmp_path / "example.md"
+        md.write_text(textwrap.dedent("""\
+            ```sh
+            # pragma: testrun demo-1
+            # pragma: timeout 600
+            echo first
+            ```
+
+            ```sh
+            # pragma: testrun demo-1
+            # pragma: timeout 30
+            echo second
+            ```
+        """))
+        blocks = list(iter_script_blocks(md))
+        assert len(blocks) == 1
+        assert blocks[0].pragmas["timeout"] == "600"
 
 
 # ---------------------------------------------------------------------------

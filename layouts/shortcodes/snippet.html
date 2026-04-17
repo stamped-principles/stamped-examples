@@ -1,0 +1,87 @@
+{{- /* snippet: extract a named code region from a build script on this page.
+     Finds "# snippet: <id>" / "# /snippet" markers, extracts heredoc body.
+     Params: id (required), lang (default "text"), lines (e.g. "3-6,10-12"). */ -}}
+
+{{- $id := .Get "id" -}}
+{{- $lang := .Get "lang" | default "text" -}}
+{{- $linesParam := .Get "lines" | default "" -}}
+
+{{- /* Phase 1: Find snippet region by scanning page raw content */ -}}
+{{- $raw := .Page.RawContent -}}
+{{- $allLines := split $raw "\n" -}}
+{{- $inSnippet := false -}}
+{{- $snippetLines := slice -}}
+{{- range $allLines -}}
+  {{- $trimmed := trim . " \t" -}}
+  {{- if not $inSnippet -}}
+    {{- if eq $trimmed (printf "# snippet: %s" $id) -}}
+      {{- $inSnippet = true -}}
+    {{- end -}}
+  {{- else -}}
+    {{- if eq $trimmed "# /snippet" -}}
+      {{- $inSnippet = false -}}
+    {{- else -}}
+      {{- $snippetLines = $snippetLines | append . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Phase 2: Extract heredoc body if present */ -}}
+{{- $heredocLines := slice -}}
+{{- $inHeredoc := false -}}
+{{- $heredocDelim := "" -}}
+{{- range $snippetLines -}}
+  {{- if not $inHeredoc -}}
+    {{- if findRE `<<'[A-Za-z_]+'` . -}}
+      {{- $heredocDelim = replaceRE `.*<<'([A-Za-z_]+)'.*` "$1" . -}}
+      {{- $inHeredoc = true -}}
+    {{- end -}}
+  {{- else -}}
+    {{- if eq (trim . " \t") $heredocDelim -}}
+      {{- $inHeredoc = false -}}
+    {{- else -}}
+      {{- $heredocLines = $heredocLines | append . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Use heredoc body if found, otherwise raw snippet lines */ -}}
+{{- $content := $snippetLines -}}
+{{- if gt (len $heredocLines) 0 -}}
+  {{- $content = $heredocLines -}}
+{{- end -}}
+
+{{- /* Phase 3: Line selection */ -}}
+{{- if ne $linesParam "" -}}
+  {{- $selected := slice -}}
+  {{- $prevEnd := 0 -}}
+  {{- $ranges := split $linesParam "," -}}
+  {{- range $ranges -}}
+    {{- $r := trim . " " -}}
+    {{- $parts := split $r "-" -}}
+    {{- $start := int (index $parts 0) -}}
+    {{- $end := $start -}}
+    {{- if gt (len $parts) 1 -}}
+      {{- $end = int (index $parts 1) -}}
+    {{- end -}}
+    {{- /* Insert ... between non-contiguous ranges */ -}}
+    {{- if and (gt $prevEnd 0) (gt $start (add $prevEnd 1)) -}}
+      {{- $selected = $selected | append "..." -}}
+    {{- end -}}
+    {{- range seq $start $end -}}
+      {{- $idx := sub . 1 -}}
+      {{- if and (ge $idx 0) (lt $idx (len $content)) -}}
+        {{- $selected = $selected | append (index $content $idx) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $prevEnd = $end -}}
+  {{- end -}}
+  {{- $content = $selected -}}
+{{- end -}}
+
+{{- /* Render */ -}}
+{{- $code := delimit $content "\n" -}}
+<div class="codeblock-wrapper codeblock-snippet">
+  <span class="codeblock-label">snippet</span>
+  {{- highlight $code $lang "" -}}
+</div>

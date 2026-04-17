@@ -1,0 +1,13 @@
+{{- /* step-link: render a link to a materialized example at a given step.
+     Looks up the commit SHA from a Hugo data file (data/<stem>.json)
+     written by materialize_examples.
+     Params: step (required), text (optional, default "Full project at this step").
+     Page param: materialize_stem (set in front matter, used as data file key). */ -}}
+{{- $step := .Get "step" -}}
+{{- $text := .Get "text" | default "Full project at this step" -}}
+{{- $stem := .Page.Params.materialize_stem -}}
+{{- $data := index site.Data $stem -}}
+{{- $tag := printf "step-%s" $step -}}
+{{- $sha := index $data $tag -}}
+{{- $repoURL := replaceRE `/tree/.*$` "" site.Params.article.editurl -}}
+<a href="{{ $repoURL }}/tree/{{ $sha }}">{{ $text }}</a>
