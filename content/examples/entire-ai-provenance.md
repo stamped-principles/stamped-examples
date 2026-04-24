@@ -25,14 +25,16 @@ was chosen over another.
 
 This is a provenance gap. Close the terminal, reboot the laptop, or come back to
 a repository six months later, and the conversation that produced the code is simply
-gone. A collaborator reading the commit history sees only the output of the reasoning
+gone. 
+<!-- TODO: The last sentence is an overstatement. Though the conversation is indeed not part of the repo --> 
+A collaborator reading the commit history sees only the output of the reasoning
 process, not the reasoning itself.
 
 For computational research, this matters. A preprocessing pipeline with a particular
 smoothing kernel or motion threshold may be entirely correct — but if nobody can
 trace back *why* those values were chosen, the research object is not fully
-[Tracked]({{< ref "stamped_principles/t" >}}). Reproducing the results is possible
-in principle; understanding them is not.
+[Tracked]({{< ref "stamped_principles/t" >}}) <!-- TODO: correct the reference-->. 
+Reproducing the results is possible in principle; understanding them is not.
 
 ## What Entire does
 
