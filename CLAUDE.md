@@ -101,3 +101,8 @@ CI runs this on push to main with `--strict --push`.
 - Four custom taxonomies: `stamped_principles`, `fair_principles`, `instrumentation_levels`, `aspirations`
 - State banners for `wip` / `uncurated-ai` content
 - Code block renderers distinguish scripts (full shebang) from snippets
+
+## AI policy
+
+The STAMPED paper's Acknowledgments commits the authors to annotating commits where AI tools notably contributed with a `Co-Authored-By:` trailer (or analogous comment) that identifies the tool and model version, so the public git history of `stamped-*` repos is the inspectable provenance record. This repo is one of those companion materials.
+When you (the AI assistant) author a commit in this repo, include a `Co-Authored-By: Claude <model-version> <noreply@anthropic.com>` trailer using the model identifier your environment provides — don't guess it.
