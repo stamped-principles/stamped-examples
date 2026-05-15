@@ -23,6 +23,9 @@ jobs:
           submodules: false
           fetch-depth: 0
 
+      - name: Check REUSE compliance
+        uses: fsfe/reuse-action@v5
+
       - name: Fetch theme submodule
         run: git submodule update --init themes/congo
 
