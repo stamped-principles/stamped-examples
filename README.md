@@ -56,3 +56,21 @@ If you are new to the PR workflow, see GitHub's
 | `aspirations` | `reproducibility` `rigor` `transparency` `efficiency` |
 | `state` | `wip` `uncurated-ai` `final` (or omit) |
 | `params.difficulty` | `beginner` `intermediate` `advanced` |
+
+## Licensing
+
+This project follows the [REUSE specification](https://reuse.software/)
+for machine-readable copyright and licensing information.
+
+- Full license text: [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt)
+  (root `LICENSE` symlinks to it for GitHub auto-detection).
+- Per-file declarations: `REUSE.toml` (a single catch-all block —
+  everything is licensed under Apache-2.0).
+- Verification: `tox -e reuse`.
+
+<!-- REUSE-IgnoreStart -->
+When adding new files, no per-file SPDX header is required — the
+catch-all block in `REUSE.toml` covers the entire tree. If a file
+ever needs a different license (rare), add a targeted block to
+`REUSE.toml` or an in-file `SPDX-License-Identifier:` header.
+<!-- REUSE-IgnoreEnd -->
