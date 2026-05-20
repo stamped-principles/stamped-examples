@@ -5,3 +5,17 @@ path = "**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 STAMPED Principles contributors"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Favicon assets derived from stamped-branding visual identity (CC-BY-4.0).
+[[annotations]]
+path = [
+  "static/favicon.ico",
+  "static/favicon-16x16.png",
+  "static/favicon-32x32.png",
+  "static/apple-touch-icon.png",
+  "static/android-chrome-192x192.png",
+  "static/android-chrome-512x512.png",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2024-2026 STAMPED Principles project contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
