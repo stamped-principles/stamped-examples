@@ -3,7 +3,7 @@ title: "Walkthrough: stellar distances from Gaia parallax"
 date: 2026-03-12
 description: "Building a STAMPED research object that computes stellar distances from Gaia DR3 parallax data"
 summary: "Incrementally builds a research object from a bare script to a tracked, portable, reproducible pipeline — motivated by real problems, not by acronym order."
-tags: ["gaia", "parallax", "walkthrough", "python", "datalad", "make"]
+tags: ["STAMPED-intro", "gaia", "parallax", "walkthrough", "python", "datalad", "make"]
 stamped_principles: ["S", "T", "A", "M", "P", "E", "D"]
 fair_principles: ["R", "A"]
 instrumentation_levels: ["workflow"]
