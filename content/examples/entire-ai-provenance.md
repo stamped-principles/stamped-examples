@@ -2,7 +2,7 @@
 title: "Tracking AI Agent Contributions with Entire"
 date: 2026-02-20
 description: "How Entire uses git orphan branches and session hooks to record AI agent provenance alongside code, demonstrating the Tracked, Actionable, and Distributable principles."
-summary: "When AI agents write code, the reasoning behind their decisions disappears when the terminal closes. Entire captures session-level provenance in a git orphan branch that travels with the repository, making AI contributions as trackable and distributable as the code itself."
+summary: "When AI agents write code, the conversation behind their decisions lives only in a local transcript on the developer's machine and never travels with the repository. Entire captures that conversation in a git orphan branch, making AI contributions as trackable and distributable as the code itself."
 tags: ["ai-agents", "provenance", "git", "claude-code", "attribution"]
 stamped_principles: ["T", "A", "D"]
 fair_principles: ["R", "A"]
@@ -23,14 +23,12 @@ it cannot capture is *why*: which alternatives the researcher considered, what
 constraints they gave the agent, or why a particular algorithm or parameter value
 was chosen over another.
 
-This is a provenance gap. Close the terminal, reboot the laptop, or come back to
-a repository six months later, and the conversation that produced the code is no
-longer part of the repository — the JSONL transcript may still sit in a local
-agent cache, but nothing travels with the code. A collaborator reading the
+This is a provenance gap. The conversation is not tied to the code it
+produces; it is not tracked by the repository. A collaborator reading the
 commit history sees only the output of the reasoning process, not the
 reasoning itself.
 
-For computational research, this matters. A preprocessing pipeline with a particular
+For computational research, this missing reasoning matters. A preprocessing pipeline with a particular
 smoothing kernel or motion threshold may be entirely correct — but if nobody can
 trace back *why* those values were chosen, the research object is not fully
 [Tracked]({{< ref "stamped_principles/t" >}}). 
