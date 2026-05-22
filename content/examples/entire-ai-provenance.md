@@ -37,10 +37,15 @@ Reproducing the results is possible in principle; understanding them is not.
 ## What Entire does
 
 [Entire](https://entire.io) ([source](https://github.com/entireio/cli),
-[docs](https://docs.entire.io/)) is a CLI tool that integrates with Claude Code
-via its hook system to capture session-level provenance automatically and
-store it in git's own infrastructure. It adds three layers on top of a normal
-git workflow:
+[docs](https://docs.entire.io/)) is a CLI tool that hooks into a coding
+agent's session events to capture provenance automatically and store it in
+git's own infrastructure. It ships with built-in support for Claude Code,
+Codex, Copilot CLI, Cursor, Factory AI Droid, Gemini CLI, OpenCode, and Pi,
+and supports other agents via
+[plugins](https://docs.entire.io/agents/external-agent-plugins). This
+example uses Claude Code for demonstration, but the same workflow applies to
+any supported agent. Entire adds three layers on top of a normal git
+workflow:
 
 **1. Transcript mining.** Entire treats Claude Code's local JSONL session transcript
 as the authoritative record of what the agent did. Rather than relying on external
