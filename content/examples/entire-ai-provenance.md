@@ -24,50 +24,62 @@ constraints they gave the agent, or why a particular algorithm or parameter valu
 was chosen over another.
 
 This is a provenance gap. Close the terminal, reboot the laptop, or come back to
-a repository six months later, and the conversation that produced the code is simply
-gone. 
-<!-- TODO: The last sentence is an overstatement. Though the conversation is indeed not part of the repo --> 
-A collaborator reading the commit history sees only the output of the reasoning
-process, not the reasoning itself.
+a repository six months later, and the conversation that produced the code is no
+longer part of the repository — the JSONL transcript may still sit in a local
+agent cache, but nothing travels with the code. A collaborator reading the
+commit history sees only the output of the reasoning process, not the
+reasoning itself.
 
 For computational research, this matters. A preprocessing pipeline with a particular
 smoothing kernel or motion threshold may be entirely correct — but if nobody can
 trace back *why* those values were chosen, the research object is not fully
-[Tracked]({{< ref "stamped_principles/t" >}}) <!-- TODO: correct the reference-->. 
+[Tracked]({{< ref "stamped_principles/t" >}}). 
 Reproducing the results is possible in principle; understanding them is not.
 
 ## What Entire does
 
-[Entire](https://entire.dev) ([source](https://github.com/entireio/cli)) is a CLI
-tool that integrates with Claude Code via its hook system to capture session-level
-provenance automatically and store it in git's own infrastructure. It adds three
-layers on top of a normal git workflow:
+[Entire](https://entire.io) ([source](https://github.com/entireio/cli),
+[docs](https://docs.entire.io/)) is a CLI tool that integrates with Claude Code
+via its hook system to capture session-level provenance automatically and
+store it in git's own infrastructure. It adds three layers on top of a normal
+git workflow:
 
 **1. Transcript mining.** Entire treats Claude Code's local JSONL session transcript
 as the authoritative record of what the agent did. Rather than relying on external
 APIs, it reads this file to extract modified files, user prompts, token usage, and
 the agent's summary of its own work.
 
-**2. Shadow branches.** During a session, Entire builds in-memory git tree snapshots
-under temporary branches named `entire/<session-id>`. These branches hold the
-working-tree state at key moments — crucially, the state *before* the agent made
-any edits — without touching the developer's working branch.
+**2. Shadow branches.** During a session, Entire builds in-memory git tree
+snapshots under temporary branches named `entire/<commit-hash>-<worktree-hash>`,
+where `<commit-hash>` is a short prefix of the pre-session HEAD. These
+branches capture the working-tree state at key points during the session and
+serve as the baseline against which Entire computes attribution — without
+touching the developer's working branch. The pre-session tree itself is just
+the parent commit; no separate snapshot file is stored.
 
-**3. Orphan metadata branch.** When a session ends, Entire consolidates the snapshot
-and session metadata into a permanent orphan branch called `entire/checkpoints/v1`.
-Checkpoint IDs are 12 random hex characters, sharded into subdirectory paths
-(`a3/b2/c4d5e6f7`), making the branch merge as a simple tree union with no
+**3. Orphan metadata branch.** When a session ends, Entire consolidates the
+session transcript and metadata into a permanent orphan branch called
+`entire/checkpoints/v1`. Checkpoint IDs are 12 random hex characters, sharded
+into subdirectory paths under the orphan branch — the first two characters
+become the top-level directory and the remaining ten the next level (e.g.
+`a3/b2c4d5e6f7/`) — making the branch merge as a simple tree union with no
 conflicts possible.
 
-**Bidirectional linking.** When the researcher commits their work, a `post-commit`
-hook appends a git trailer to the commit message:
+**Bidirectional linking.** Trailer insertion is handled by *git-side* hooks
+that `entire enable` installs alongside the Claude Code hooks. The
+`prepare-commit-msg` hook injects an `Entire-Checkpoint` trailer into the
+in-progress commit message, and `post-commit` finalizes the link by amending
+the commit:
 
 ```
 Entire-Checkpoint: a3b2c4d5e6f7
 ```
 
 This creates a two-way link: given any commit, `git log` exposes the checkpoint ID;
-given any checkpoint ID, a `git log --grep` search locates the commit.
+given any checkpoint ID, a `git log --grep` search locates the commit. The
+behavior is idempotent — if a follow-up session amends a commit that already
+carries an `Entire-Checkpoint` trailer, the new session is appended to the
+existing checkpoint rather than producing a new one.
 
 **Attribution measurement.** By snapshotting the working tree at the moment a prompt
 is submitted (before the agent responds), Entire can measure which lines existed
@@ -83,8 +95,9 @@ running `entire enable` in a repository writes hook registrations into
 configuration:
 
 ```sh
-# Install Entire (Homebrew)
-brew tap entireio/tap && brew install entireio/tap/entire
+# Install Entire (Homebrew — distributed as a cask)
+brew tap entireio/tap
+brew install --cask entire
 
 # Or via Go
 go install github.com/entireio/cli/cmd/entire@latest
@@ -94,24 +107,40 @@ cd my-research-project
 entire enable
 ```
 
-The resulting `.claude/settings.json` registers seven lifecycle hooks:
+The resulting `.claude/settings.json` registers six Claude Code hook events
+(`PostToolUse` is registered twice, once per matcher):
 
 ```json
 {
   "hooks": {
-    "SessionStart":       [{ "hooks": [{ "type": "command", "command": "entire hook session-start" }] }],
-    "SessionEnd":         [{ "hooks": [{ "type": "command", "command": "entire hook session-end" }] }],
-    "UserPromptSubmit":   [{ "hooks": [{ "type": "command", "command": "entire hook user-prompt-submit" }] }],
-    "Stop":               [{ "hooks": [{ "type": "command", "command": "entire hook stop" }] }],
-    "PreToolUse":         [{ "hooks": [{ "type": "command", "command": "entire hook pre-tool-use" }] }],
-    "PostToolUse":        [{ "hooks": [{ "type": "command", "command": "entire hook post-tool-use" }] }],
-    "PostCommit":         [{ "hooks": [{ "type": "command", "command": "entire hook post-commit" }] }]
+    "SessionStart":     [{ "matcher": "", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code session-start" }] }],
+    "SessionEnd":       [{ "matcher": "", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code session-end" }] }],
+    "UserPromptSubmit": [{ "matcher": "", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code user-prompt-submit" }] }],
+    "Stop":             [{ "matcher": "", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code stop" }] }],
+    "PreToolUse":       [{ "matcher": "Task", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code pre-task" }] }],
+    "PostToolUse": [
+      { "matcher": "Task",      "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code post-task" }] },
+      { "matcher": "TodoWrite", "hooks": [{ "type": "command", "command": "<guarded> entire hooks claude-code post-todo" }] }
+    ]
   }
 }
 ```
 
-These hooks fire automatically on every Claude Code session in the repository from
-this point forward. No further configuration is needed for basic provenance capture.
+Each `<guarded>` placeholder above stands for an availability check that
+makes the repository safe to clone on machines where `entire` is not
+installed:
+
+```
+sh -c 'if ! command -v entire >/dev/null 2>&1; then exit 0; fi; exec <inner>'
+```
+
+These hooks fire automatically on every Claude Code session in the repository
+from this point forward. `entire enable` also installs three git-side hooks
+under `.git/hooks/` (`prepare-commit-msg`, `commit-msg`, `post-commit`) for
+trailer insertion, creates the `entire/checkpoints/v1` orphan branch
+immediately, and prompts for telemetry consent (pass `--yes` for
+non-interactive setups). No further configuration is needed for basic
+provenance capture.
 
 ## Concrete scenario: a neuroimaging preprocessing pipeline
 
@@ -129,8 +158,8 @@ git add preprocess.py
 git commit -m "Add BOLD preprocessing pipeline"
 ```
 
-Because the `PostCommit` hook is registered, Entire amends the commit message before
-it is finalized:
+Because the git-side `prepare-commit-msg` and `post-commit` hooks are
+installed, Entire amends the commit message to add the trailer:
 
 ```
 commit 9f3ab12cde45f6a7
@@ -151,18 +180,27 @@ the working tree into a shadow branch. This records that `preprocess.py` did not
 exist before the session — the file is attributable entirely to the agent. Jane's
 subsequent edit to the filter cutoff is captured as a human modification.
 
-When the session ended (`Stop` hook), Entire serialised the full session metadata
-into the `entire/checkpoints/v1` orphan branch at path `a3/b2/c4d5e6f7/`:
+When the session ended (`Stop` hook), Entire serialised the full session
+metadata into the `entire/checkpoints/v1` orphan branch under
+`a3/b2c4d5e6f7/`:
 
 ```
 entire/checkpoints/v1
 └── a3/
-    └── b2/
-        └── c4d5e6f7/
-            ├── session.json       # prompts, token usage, model, timestamp
-            ├── attribution.json   # per-file human vs agent line counts
-            └── snapshot.pack      # git pack of the pre-session tree
+    └── b2c4d5e6f7/
+        ├── metadata.json          # checkpoint-level summary (across sessions)
+        └── 0/                     # per-session sub-index (0, 1, 2, ...)
+            ├── metadata.json      # session metrics, token usage, attribution
+            ├── full.jsonl         # JSONL transcript of the session
+            ├── prompt.txt         # the user prompt
+            └── content_hash.txt   # content fingerprint
 ```
+
+Attribution data — per-file agent/human line counts and percentages — lives
+inside `metadata.json` as the `initial_attribution` and
+`combined_attribution` fields rather than in a separate file. When a follow-up
+session is appended to the same checkpoint, it is written as a new sub-index
+(`1/`, `2/`, ...) alongside `0/`.
 
 ## Querying the provenance
 
@@ -170,7 +208,7 @@ Two commands cover most provenance queries, alongside standard git:
 
 ```sh
 # Inspect a session or commit (pass a checkpoint ID or commit SHA)
-entire explain a3b2c4d5e6f7
+entire checkpoint explain a3b2c4d5e6f7
 
 # Find all commits that involved agent assistance
 git log --grep="Entire-Checkpoint" --format="%H %s"
@@ -179,19 +217,20 @@ git log --grep="Entire-Checkpoint" --format="%H %s"
 git log entire/checkpoints/v1 --oneline
 ```
 
-`entire explain` retrieves the full session record — prompts, token usage, modified
-files, and attribution data — for the given checkpoint.
+`entire checkpoint explain` retrieves the full session record — prompts,
+token usage, modified files, and attribution data — for the given checkpoint.
 
-A collaborator cloning the repository six months later can run `entire explain` on any
-commit's checkpoint ID and retrieve the exact prompt that drove the change — without
-needing access to the original developer's machine or Claude conversation history.
+A collaborator cloning the repository six months later can run
+`entire checkpoint explain` on any commit's checkpoint ID and retrieve the
+exact prompt that drove the change — without needing access to the original
+developer's machine or Claude conversation history.
 
 ## STAMPED analysis
 
 | Principle | How Entire embodies it |
 |---|---|
 | [Tracked]({{< ref "stamped_principles/t" >}}) | Every AI-assisted session is stored in a content-addressed git orphan branch. The `Entire-Checkpoint:` trailer creates bidirectional links between commits and session metadata. File changes, prompts, token usage, and human-vs-agent attribution are all version-controlled. |
-| [Actionable]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire explain` makes any session's context retrievable on demand. |
+| [Actionable]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire checkpoint explain` makes any session's context retrievable on demand. |
 | [Distributable]({{< ref "stamped_principles/d" >}}) | The `entire/checkpoints/v1` orphan branch is a standard git branch. Running `git push` transmits it alongside the code branches. Any collaborator who clones the repository receives the complete session history, not just the source files. |
 
 **A note on [Ephemerality]({{< ref "stamped_principles/e" >}}).** Shadow branches are
@@ -210,9 +249,10 @@ merges as a pure tree union — new paths are added, existing paths are never
 overwritten. Two researchers can push simultaneously without producing conflicts in
 the metadata branch.
 
-This also means the `entire/checkpoints/v1` branch accumulates indefinitely. There
-is currently no built-in retention policy; teams working on long-lived repositories
-should plan for periodic archival or pruning of old checkpoint data.
+This also means the `entire/checkpoints/v1` branch accumulates indefinitely.
+There is no automatic retention policy, but the CLI provides `entire clean`
+for manual pruning (`--all` for the whole repository, `--session <id>` for a
+specific session, or HEAD-only by default).
 
 ## Practical guidelines
 
@@ -221,7 +261,7 @@ should plan for periodic archival or pruning of old checkpoint data.
    links. Enable early, when the first agent session begins.
 
 2. **Write informative prompts.** Prompts are stored verbatim in the session record
-   and surfaced by `entire explain`. A prompt like "fix the bug" leaves a poor audit
+   and surfaced by `entire checkpoint explain`. A prompt like "fix the bug" leaves a poor audit
    trail; "fix the off-by-one error in the epoch indexing loop in train.py" tells
    future readers exactly what problem was being solved.
 
@@ -258,7 +298,3 @@ without requiring any change to the researcher's existing commit workflow.
 
 For a complementary approach to recording computational provenance through explicit
 run records, see [Recording Computational Provenance with datalad run]({{< ref "examples/datalad-run-provenance" >}}).
-
-# TODOs:
-- Replace the URL for the main company website, https://entire.dev, with https://entire.io/.
-- Provide reference to documentation at https://docs.entire.io/introduction
