@@ -1,7 +1,7 @@
 ---
 title: "Tracking AI Agent Contributions with Entire"
 date: 2026-02-20
-description: "How Entire uses git orphan branches and session hooks to record AI agent provenance alongside code, demonstrating the Tracked, Actionable, and Distributable principles."
+description: "How Entire uses git orphan branches and session hooks to record AI agent provenance alongside code, demonstrating the Tracking, Actionability, and Distributability principles."
 summary: "When AI agents write code, the conversation behind their decisions lives only in a local transcript on the developer's machine and never travels with the repository. Entire captures that conversation in a git orphan branch, making AI contributions as trackable and distributable as the code itself."
 tags: ["ai-agents", "provenance", "git", "claude-code", "attribution"]
 stamped_principles: ["T", "A", "D"]
@@ -30,8 +30,8 @@ reasoning itself.
 
 For computational research, this missing reasoning matters. A preprocessing pipeline with a particular
 smoothing kernel or motion threshold may be entirely correct — but if nobody can
-trace back *why* those values were chosen, the research object is not fully
-[Tracked]({{< ref "stamped_principles/t" >}}). 
+trace back *why* those values were chosen, the research object does not
+satisfy [Tracking]({{< ref "stamped_principles/t" >}}). 
 Reproducing the results is possible in principle; understanding them is not.
 
 ## What Entire does
@@ -232,9 +232,9 @@ developer's machine or Claude conversation history.
 
 | Principle | How Entire embodies it |
 |---|---|
-| [Tracked]({{< ref "stamped_principles/t" >}}) | Every AI-assisted session is stored in a content-addressed git orphan branch. The `Entire-Checkpoint:` trailer creates bidirectional links between commits and session metadata. File changes, prompts, token usage, and human-vs-agent attribution are all version-controlled. |
-| [Actionable]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire checkpoint explain` makes any session's context retrievable on demand. |
-| [Distributable]({{< ref "stamped_principles/d" >}}) | The `entire/checkpoints/v1` orphan branch is a standard git branch. Running `git push` transmits it alongside the code branches. Any collaborator who clones the repository receives the complete session history, not just the source files. |
+| [Tracking]({{< ref "stamped_principles/t" >}}) | Every AI-assisted session is stored in a content-addressed git orphan branch. The `Entire-Checkpoint:` trailer creates bidirectional links between commits and session metadata. File changes, prompts, token usage, and human-vs-agent attribution are all version-controlled. |
+| [Actionability]({{< ref "stamped_principles/a" >}}) | Provenance capture requires no manual steps — hooks fire automatically on every session. Checkpoint data is machine-readable JSON that downstream tools can query, diff, and process. `entire checkpoint explain` makes any session's context retrievable on demand. |
+| [Distributability]({{< ref "stamped_principles/d" >}}) | The `entire/checkpoints/v1` orphan branch is a standard git branch. Running `git push` transmits it alongside the code branches. Any collaborator who clones the repository receives the complete session history, not just the source files. |
 
 **A note on [Ephemerality]({{< ref "stamped_principles/e" >}}).** Shadow branches are
 created per-session and discarded once their contents are consolidated into the orphan
@@ -292,12 +292,14 @@ distributable. Entire extends that guarantee to the *generative process* of
 AI-assisted code: every session's prompts, file changes, and attribution data are
 stored as ordinary git objects in an orphan branch that travels with the repository.
 
-The result is a research object that is more fully [Tracked]({{< ref "stamped_principles/t" >}}) —
-not just the state of the code at each commit, but the conversation that produced it —
-and more fully [Distributable]({{< ref "stamped_principles/d" >}}), because that
-conversation is bundled with the repository rather than siloed in a local terminal.
-The hook-based design makes this [Actionable]({{< ref "stamped_principles/a" >}})
-without requiring any change to the researcher's existing commit workflow.
+The result is a research object that more fully satisfies
+[Tracking]({{< ref "stamped_principles/t" >}}) — not just the state of the
+code at each commit, but the conversation that produced it — and
+[Distributability]({{< ref "stamped_principles/d" >}}), because that
+conversation is bundled with the repository rather than siloed in a local
+terminal. The hook-based design preserves
+[Actionability]({{< ref "stamped_principles/a" >}}) without requiring any
+change to the researcher's existing commit workflow.
 
 For a complementary approach to recording computational provenance through explicit
 run records, see [Recording Computational Provenance with datalad run]({{< ref "examples/datalad-run-provenance" >}}).
