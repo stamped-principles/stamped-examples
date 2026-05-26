@@ -19,13 +19,13 @@ treatment; the table below is a quick reference:
 
 | Property | Core idea |
 |---|---|
-| **[S]({{< ref "stamped_principles/s" >}})** -- [Self-contained]({{< ref "stamped_principles/s" >}}) | Everything needed to replicate results is within a single top-level boundary -- the "don't look up" rule. |
-| **[T]({{< ref "stamped_principles/t" >}})** -- [Tracked]({{< ref "stamped_principles/t" >}}) | All components are content-addressed and version-controlled; provenance of every modification is recorded. |
-| **[A]({{< ref "stamped_principles/a" >}})** -- [Actionable]({{< ref "stamped_principles/a" >}}) | Procedures are executable specifications, not just documentation -- a cross-cutting property that applies to every other STAMPED dimension. |
-| **[M]({{< ref "stamped_principles/m" >}})** -- [Modular]({{< ref "stamped_principles/m" >}}) | Components are organized as independently versioned modules that can be composed, updated, and reused separately. |
-| **[P]({{< ref "stamped_principles/p" >}})** -- [Portable]({{< ref "stamped_principles/p" >}}) | Procedures do not depend on undocumented host state; computational environments are explicitly specified and versioned. |
-| **[E]({{< ref "stamped_principles/e" >}})** -- [Ephemeral]({{< ref "stamped_principles/e" >}}) | Results can be produced in temporary, disposable environments built solely from the research object's contents -- validating that other properties hold. |
-| **[D]({{< ref "stamped_principles/d" >}})** -- [Distributable]({{< ref "stamped_principles/d" >}}) | The research object and all its components are persistently retrievable by others, packaged like a software distribution. |
+| **[S]({{< ref "stamped_principles/s" >}})** -- [Self-containment]({{< ref "stamped_principles/s" >}}) | Everything needed to replicate results is within a single top-level boundary -- the "don't look up" rule. |
+| **[T]({{< ref "stamped_principles/t" >}})** -- [Tracking]({{< ref "stamped_principles/t" >}}) | All components are content-addressed and version-controlled; provenance of every modification is recorded. |
+| **[A]({{< ref "stamped_principles/a" >}})** -- [Actionability]({{< ref "stamped_principles/a" >}}) | Procedures are executable specifications, not just documentation -- a cross-cutting property that applies to every other STAMPED dimension. |
+| **[M]({{< ref "stamped_principles/m" >}})** -- [Modularity]({{< ref "stamped_principles/m" >}}) | Components are organized as independently versioned modules that can be composed, updated, and reused separately. |
+| **[P]({{< ref "stamped_principles/p" >}})** -- [Portability]({{< ref "stamped_principles/p" >}}) | Procedures do not depend on undocumented host state; computational environments are explicitly specified and versioned. |
+| **[E]({{< ref "stamped_principles/e" >}})** -- [Ephemerality]({{< ref "stamped_principles/e" >}}) | Results can be produced in temporary, disposable environments built solely from the research object's contents -- validating that other properties hold. |
+| **[D]({{< ref "stamped_principles/d" >}})** -- [Distributability]({{< ref "stamped_principles/d" >}}) | The research object and all its components are persistently retrievable by others, packaged like a software distribution. |
 
 These properties reinforce one another.
 Self-containment makes portability practical, tracking enables actionability,

@@ -1,5 +1,5 @@
 ---
-title: "P — Portable"
+title: "P — Portability"
 description: "Procedures do not depend on undocumented host state; environments are explicitly specified"
 ---
 

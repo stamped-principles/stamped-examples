@@ -1,5 +1,5 @@
 ---
-title: "A — Actionable"
+title: "A — Actionability"
 description: "Procedures are executable specifications, not just documentation"
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "S — Self-contained"
+title: "S — Self-containment"
 description: "All essential modules and components reside within a single top-level boundary"
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "M — Modular"
+title: "M — Modularity"
 description: "Components organized as independently versioned modules that can be composed and reused"
 ---
 

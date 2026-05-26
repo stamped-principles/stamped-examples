@@ -405,7 +405,7 @@ reuse ([FAIR R]({{< ref "fair_principles/r" >}})) at scale.
 
 | Property | How the pattern embodies it |
 |---|---|
-| [Self-contained]({{< ref "stamped_principles/s" >}}) | `pyproject.toml` declares all dependencies; combined with a pinned container tag (or digest), the full environment is specified |
-| [Actionable]({{< ref "stamped_principles/a" >}}) | A single `docker run` or `singularity exec` command reproduces the environment — no manual setup steps |
-| [Portable]({{< ref "stamped_principles/p" >}}) | The container pins the Python version and system libraries; `pyproject.toml` (or a lock file) pins package versions; the pattern works on any host with a container runtime |
-| [Ephemeral]({{< ref "stamped_principles/e" >}}) | Each container invocation starts from a clean base; the overlay venv can be ephemeral (Scenario 3 — recreated every run for guaranteed reproducibility) or persistent (Scenarios 1–2 — kept across runs for faster iteration) — the choice is yours |
+| [Self-containment]({{< ref "stamped_principles/s" >}}) | `pyproject.toml` declares all dependencies; combined with a pinned container tag (or digest), the full environment is specified |
+| [Actionability]({{< ref "stamped_principles/a" >}}) | A single `docker run` or `singularity exec` command reproduces the environment — no manual setup steps |
+| [Portability]({{< ref "stamped_principles/p" >}}) | The container pins the Python version and system libraries; `pyproject.toml` (or a lock file) pins package versions; the pattern works on any host with a container runtime |
+| [Ephemerality]({{< ref "stamped_principles/e" >}}) | Each container invocation starts from a clean base; the overlay venv can be ephemeral (Scenario 3 — recreated every run for guaranteed reproducibility) or persistent (Scenarios 1–2 — kept across runs for faster iteration) — the choice is yours |
