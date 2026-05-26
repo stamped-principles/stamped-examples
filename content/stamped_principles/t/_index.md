@@ -1,5 +1,5 @@
 ---
-title: "T — Tracked"
+title: "T — Tracking"
 description: "Version information and provenance recorded for all components via content-addressed version control"
 ---
 

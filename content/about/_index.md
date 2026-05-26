@@ -33,8 +33,8 @@ beyond any single tool:
 
 Examples on this site are organized along four independent dimensions:
 
-1. **[STAMPED properties]({{< ref "stamped_principles" >}})** -- [Self-contained]({{< ref "stamped_principles/s" >}}), [Tracked]({{< ref "stamped_principles/t" >}}), [Actionable]({{< ref "stamped_principles/a" >}}),
-   [Modular]({{< ref "stamped_principles/m" >}}), [Portable]({{< ref "stamped_principles/p" >}}), [Ephemeral]({{< ref "stamped_principles/e" >}}), and [Distributable]({{< ref "stamped_principles/d" >}}).
+1. **[STAMPED properties]({{< ref "stamped_principles" >}})** -- [Self-containment]({{< ref "stamped_principles/s" >}}), [Tracking]({{< ref "stamped_principles/t" >}}), [Actionability]({{< ref "stamped_principles/a" >}}),
+   [Modularity]({{< ref "stamped_principles/m" >}}), [Portability]({{< ref "stamped_principles/p" >}}), [Ephemerality]({{< ref "stamped_principles/e" >}}), and [Distributability]({{< ref "stamped_principles/d" >}}).
 2. **[FAIR mapping]({{< ref "fair_principles" >}})** -- which of the FAIR goals ([Findable]({{< ref "fair_principles/f" >}}), [Accessible]({{< ref "fair_principles/a" >}}),
    [Interoperable]({{< ref "fair_principles/i" >}}), [Reusable]({{< ref "fair_principles/r" >}})) the practice supports.
 3. **[Instrumentation level]({{< ref "instrumentation_levels" >}})** -- ranging from [conventions]({{< ref "instrumentation_levels/data-organization" >}}) that require no

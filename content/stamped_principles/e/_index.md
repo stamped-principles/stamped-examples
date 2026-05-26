@@ -1,5 +1,5 @@
 ---
-title: "E — Ephemeral"
+title: "E — Ephemerality"
 description: "Results produced in temporary, disposable environments validate that other STAMPED properties hold"
 ---
 

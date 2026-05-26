@@ -45,7 +45,7 @@ No new frameworks.
 No heavyweight infrastructure.
 Just a series of small, practical steps, each one solving a concrete problem: "which version of the data did I use?", "why doesn't this run on my colleague's laptop?", "how do I prove these numbers are right?"
 
-Along the way, we note which [STAMPED]({{< ref "stamped_principles" >}}) properties (Self-contained, Tracked, Actionable, Modular, Portable, Ephemeral, Distributable) each step improves.
+Along the way, we note which [STAMPED]({{< ref "stamped_principles" >}}) properties (Self-containment, Tracking, Actionability, Modularity, Portability, Ephemerality, Distributability) each step improves.
 By the end, we have a research object that passes a from-scratch reproduction test in a throwaway directory.
 Most of the steps turn out to be things we might already be doing, just named and organized.
 

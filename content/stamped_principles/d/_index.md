@@ -1,5 +1,5 @@
 ---
-title: "D — Distributable"
+title: "D — Distributability"
 description: "The research object and all its components are persistently retrievable by others"
 ---
 
