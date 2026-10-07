@@ -11,12 +11,10 @@ aspirations: ["reproducibility", "rigor", "transparency"]
 params:
   tools: ["python", "git", "datalad", "pixi"]
   difficulty: "beginner"
-  verified: true
+  verified: false
   materialize_stem: "pixi-stellar-distance-walkthrough"
 state: wip
 ---
-
-> **Pixi adaptation:** This page follows the [original Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}), replacing Make and virtual environment setup with Pixi.
 
 ```sh
 #!/usr/bin/env bash
@@ -51,6 +49,7 @@ Just a series of small, practical steps, each one solving a concrete problem: "w
 Along the way, we note which [STAMPED]({{< ref "stamped_principles" >}}) properties (Self-contained, Tracked, Actionable, Modular, Portable, Ephemeral, Distributable) each step improves.
 By the end, we have a research object that passes a from-scratch reproduction test in a throwaway directory.
 Most of the steps turn out to be things we might already be doing, just named and organized.
+Each principle describes a spectrum: STAMPED gives us a vocabulary for choosing how much structure and tracking the work needs.
 
 **The science**: we compute the distance to 100 nearby stars using parallax measurements from the [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) catalog.
 The math is one line: `distance_pc = 1000 / parallax_mas`.
@@ -66,10 +65,13 @@ Install [Pixi](https://pixi.sh/latest/installation/) before starting.
 Create the project and enter its environment:
 
 ```sh
-pixi init stellar-distance
+pixi init stellar-distance --platform linux-64 --platform osx-arm64 --platform osx-64
 cd stellar-distance/
+pixi workspace platform edit linux-64 --glibc 2.34
+pixi workspace platform edit osx-arm64 --macos 14.0
+pixi workspace platform edit osx-64 --macos 15.0
 pixi add "python>=3.10" git curl
-pixi add --pypi datalad
+pixi add --pypi datalad git-annex
 pixi shell
 git init
 
@@ -78,16 +80,21 @@ printf '\npixi.lock\n' >> .gitignore
 
 Our project depends on Python and tools such as Git, curl, and DataLad.
 `pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
-This makes the tools our project needs explicit, rather than assuming they are already installed.
+We track this manifest alongside the code.
+The platform settings declare the minimum host requirements for the git-annex wheel: glibc 2.34 on Linux, macOS 14 on Apple Silicon, and macOS 15 on Intel.
+Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider retaining the generated lockfile in step 8.
 `pixi shell` means all subsequent commands have access to the dependencies installed into the environment.
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-pixi init stellar-distance
+pixi init stellar-distance --platform linux-64 --platform osx-arm64 --platform osx-64
 cd stellar-distance/
+pixi workspace platform edit linux-64 --glibc 2.34
+pixi workspace platform edit osx-arm64 --macos 14.0
+pixi workspace platform edit osx-64 --macos 15.0
 pixi add "python>=3.10" git curl
-pixi add --pypi datalad
+pixi add --pypi datalad git-annex
 eval "$(pixi shell-hook --shell bash)"
 git init
 git config user.email "demo@example.com"
@@ -439,10 +446,10 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 cat >> pixi.toml <<'TOML'
 
 [tasks.fetch]
-cmd = "test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv"
+cmd = "test -f raw/gaia_nearby.csv || datalad run --explicit -m 'Fetch Gaia parallaxes' -i code/fetch_data.py -i pixi.toml -o raw/gaia_nearby.csv -- python code/fetch_data.py raw/gaia_nearby.csv"
 
 [tasks.compute]
-cmd = "python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
+cmd = "datalad run --explicit -m 'Compute stellar distances' -i raw/gaia_nearby.csv -i code/compute_distances.py -i pixi.toml -o output/distances.csv -- python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
 depends-on = ["fetch"]
 inputs = ["raw/gaia_nearby.csv", "code/compute_distances.py"]
 outputs = ["output/distances.csv"]
@@ -483,7 +490,9 @@ The Pixi tasks *do* it.
 This is the jump from documented to executable: the Actionability spectrum in action (A.2).
 The `depends-on` entries put the steps in order.
 The fetch task keeps the existing raw data when present.
-The compute task declares its inputs and output so Pixi can skip it when they and the command and environment are unchanged.
+The compute task declares its inputs and output so Pixi can skip unchanged work.
+When it runs, DataLad records the explicit Python command; the scripts themselves remain independent of DataLad.
+The same manifest now describes both our tools and how to use them.
 
 Now `pixi run all` is the single command to reproduce everything.
 We update the README accordingly.
@@ -569,12 +578,17 @@ if __name__ == "__main__":
 PYEOF
 # /snippet
 
-# Add a test task to Pixi.
-pixi task add test 'sh test/fetch_reference_distances.sh && python test/verify_distances.py' --depends-on all
+# Add reference acquisition and verification tasks.
+cat >> pixi.toml <<'TOML'
 
-cat >> .gitignore <<'GI'
-test/reference_distances.csv
-GI
+[tasks.reference]
+cmd = "test -f test/reference_distances.csv || datalad run --explicit -m 'Fetch Gaia reference distances' -i output/distances.csv -i test/fetch_reference_distances.sh -i pixi.toml -o test/reference_distances.csv -- sh test/fetch_reference_distances.sh"
+depends-on = ["all"]
+
+[tasks.test]
+cmd = "python test/verify_distances.py"
+depends-on = ["reference"]
+TOML
 
 # Append Verify section to README
 cat >> README.md <<'README'
@@ -590,11 +604,13 @@ git commit -m "Add verification test against Gaia GSP-Phot reference distances"
 pixi run test
 ```
 
-We write a verification script that fetches independent reference distances from Gaia's GSP-Phot pipeline and compares them to our computed values.
+We fetch independent reference distances from Gaia's GSP-Phot pipeline and write a verification script that compares them to our computed values.
 
 {{< snippet id="verify-distances" lang="python" lines="1-2,8,19,26-31,34-35,43" >}}
 
-We add a `test` task to Pixi so `pixi run test` runs it:
+We add a `test` task depending on reference acquisition, so `pixi run test` runs the comparison.
+The reference task keeps its downloaded CSV; removing that file explicitly requests a fresh acquisition.
+On the first run:
 
 ```
 $ pixi run test
@@ -631,11 +647,13 @@ stellar-distance/
 
 **Advances**: A (verifiable results, not just "trust me")
 
-### 8. Pin dependencies
+### 8. Retain a dependency selection
 
 So far, `pixi.toml` has declared the Python, Git, curl, and DataLad dependencies our project needs.
-We now start tracking the generated `pixi.lock` as an additional layer of reproducibility.
-It records the resolved package versions and hashes, allowing collaborators to install that selection instead of resolving dependencies again.
+Those requirements can allow several versions; tighter constraints narrow the choice but do not identify every transitive dependency.
+For a result we want to share and recover, we now retain the generated `pixi.lock`.
+It records the resolved package versions and hashes for each declared platform, including platform-specific conda-forge binaries.
+This lets collaborators install the selected packages appropriate to their platform.
 
 Use `git add -f` to start tracking the lockfile despite its `.gitignore` entry.
 Once tracked, subsequent changes are handled normally by Git.
@@ -663,7 +681,7 @@ git commit -m "build: pin the project environment"
 ```
 
 Commit both files so a collaborator can install the recorded environment with `pixi install --locked`.
-This is where Portability meets Tracking: the environment specification is versioned alongside the code.
+`--locked` rejects a manifest/lock mismatch instead of updating the lock automatically. Ordinary Pixi execution reuses a suitable lock but can update it when requirements change. Keeping lock changes in Git can produce noisy diffs, so retaining this result checkpoint is a deliberate choice; continuous lock tracking need not be every project's default. This is where Portability meets Tracking: we choose how precisely to preserve the environment alongside the code. See the [Pixi lockfile documentation](https://pixi.prefix.dev/latest/workspace/lock_file/) for the execution options.
 
 {{< step-link step="8" >}}
 
@@ -712,6 +730,7 @@ We write `test/reproduce_from_scratch.sh`, a script that clones the repository i
 {{< step-link step="9" >}}
 
 If it passes, the research object reproduces from a fresh clone with a newly installed environment.
+The `.pixi/` directory is disposable: we preserve its specification and recreate the installed tools when needed.
 
 This is the integration test for a research object.
 Ephemeral reproduction exercises almost every STAMPED property at once: the project must be self-contained (S), the pipeline must actually run (A), it must work in a fresh environment (P), and there's no prior state to lean on (E).
@@ -773,30 +792,29 @@ We've built something solid, but there are natural next steps depending on what 
 
 ### Replay and adapt with datalad rerun
 
-Because we recorded provenance with `datalad run`, we can replay the entire pipeline:
-
-```sh
-datalad rerun
-```
-
-This re-executes every recorded command in order.
-But `datalad rerun` really shines when something changes.
-
-Say we want to expand our sample from 100 to 200 stars.
-We update the query parameters in `fetch_data.py`, then re-run just the fetch:
+Because we recorded an explicit computation with `datalad run`, we can apply that command again after changing its code or inputs.
+For example, expand the sample to 200 stars by editing and saving the query in `code/fetch_data.py`, then record a new acquisition:
 
 ```sh
 datalad run \
   --message "Fetch 200 nearest stars from Gaia DR3" \
+  --input code/fetch_data.py \
   --output raw/gaia_nearby.csv \
-  python3 code/fetch_data.py raw/gaia_nearby.csv
+  -- python code/fetch_data.py raw/gaia_nearby.csv
 ```
 
-The new data is committed with a fresh provenance record.
-Then `datalad rerun` of the analysis step picks up the new input and recomputes distances.
-The full pipeline adapts to changed inputs without manual re-orchestration.
+Select the analysis run's commit from `git log` and replay it on the current state:
 
-This is where modularity and provenance reinforce each other: because the fetch and analysis steps are recorded separately, we can update one without losing the provenance of the other.
+```sh
+pixi run --locked -- datalad rerun ANALYSIS_RUN_REV
+```
+
+The recorded command uses the revised input to recompute distances.
+The comparison also needs reference distances for the expanded sample; remove `test/reference_distances.csv` before running `pixi run test` to refresh them.
+This is where modularity and provenance reinforce each other: we can update one step while retaining the history of the others.
+
+Recovering a historical result asks a different question from applying a procedure to changed inputs.
+[Choosing what stays fixed during replay]({{< ref "guides/choosing-what-changes" >}}) explores that distinction, including `datalad rerun --onto` and selecting the intended Pixi environment.
 
 ### Modularity via subdatasets
 
@@ -821,6 +839,8 @@ A Dockerfile (pinned by image digest) freezes the OS and Python version.
 Running the pipeline inside a disposable container validates that the specifications are complete.
 If it works in a fresh container, it's not relying on anything from our machine.
 See [Container venv overlay for Python development]({{< ref "examples/container-venv-overlay-development" >}}) for a detailed treatment of this pattern.
+
+Pixi also supports separate environments for different tasks and dependency specifications embedded in standalone scripts, useful when exploration needs tools beyond the main analysis.
 
 ### CI for ephemeral validation
 
