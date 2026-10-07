@@ -1,6 +1,6 @@
 ---
-title: "Walkthrough: stellar distances from Gaia parallax"
-date: 2026-03-12
+title: "Pixi walkthrough: stellar distances from Gaia parallax"
+date: 2026-10-07
 description: "Building a STAMPED research object that computes stellar distances from Gaia DR3 parallax data"
 summary: "Incrementally builds a research object from a bare script to a tracked, portable, reproducible pipeline — motivated by real problems, not by acronym order."
 tags: ["STAMPED-intro", "gaia", "parallax", "walkthrough", "python", "datalad", "make"]
@@ -11,9 +11,14 @@ aspirations: ["reproducibility", "rigor", "transparency"]
 params:
   tools: ["python", "git", "datalad", "make"]
   difficulty: "beginner"
-  verified: true
+  verified: false
   materialize_stem: "stellar-distance-walkthrough"
+state: wip
 ---
+
+> **Development baseline:** This page duplicates the [original Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}) as a starting point for a Pixi adaptation.
+> The analysis and commands below still use the original tooling and have not been tested in this copy.
+> Links to the full project at each step currently refer to the original walkthrough's materialized projects.
 
 ```sh
 #!/bin/sh
