@@ -60,38 +60,40 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 
 ## Steps
 
-### 1. Start a project
+### 1. Set up our project
 
-Install [Pixi](https://pixi.sh/latest/installation/) and Git before starting.
+Install [Pixi](https://pixi.sh/latest/installation/) before starting.
 Create the project and enter its environment:
 
 ```sh
-git init stellar-distance
-cd stellar-distance
-pixi init .
-printf '\npixi.lock\n' >> .gitignore
+pixi init stellar-distance
+cd stellar-distance/
 pixi add "python>=3.10" git curl
 pixi add --pypi datalad
 pixi shell
+git init
+
+printf '\npixi.lock\n' >> .gitignore
 ```
 
-The `pixi.toml` manifest declares Python and the tools used below.
-Run the following commands inside this shell; use `exit` to leave it.
+Our project depends on Python and tools such as Git, curl, and DataLad.
+`pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
+This makes the tools our project needs explicit, rather than assuming they are already installed.
+`pixi shell` means all subsequent commands have access to the dependencies installed into the environment.
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-git init stellar-distance
-cd stellar-distance
-git config user.email "demo@example.com"
-git config user.name "Demo User"
-
-# Set up the tools used throughout the walkthrough.
-pixi init .
-printf '\npixi.lock\n' >> .gitignore
+pixi init stellar-distance
+cd stellar-distance/
 pixi add "python>=3.10" git curl
 pixi add --pypi datalad
 eval "$(pixi shell-hook --shell bash)"
+git init
+git config user.email "demo@example.com"
+git config user.name "Demo User"
+
+printf '\npixi.lock\n' >> .gitignore
 
 # snippet: compute-everything
 cat > compute_everything.py <<'PYEOF'
@@ -404,10 +406,6 @@ Compute distances to nearby stars using parallax measurements from the
 
 ## Reproduce
 
-Install [Pixi](https://pixi.sh/latest/installation/) and Git, then enter the project environment:
-
-    pixi shell
-
     python3 code/fetch_data.py raw/gaia_nearby.csv
     python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 README
@@ -436,9 +434,16 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 # pragma: render hidden
 # snippet: pixi-tasks
 pixi task add fetch 'test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv'
-pixi task add compute 'python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv' --depends-on fetch
-pixi task alias all compute
 pixi task add clean 'rm -f output/distances.csv'
+cat >> pixi.toml <<'TOML'
+
+[tasks.compute]
+cmd = "python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
+depends-on = ["fetch"]
+inputs = ["raw/gaia_nearby.csv", "code/compute_distances.py"]
+outputs = ["output/distances.csv"]
+TOML
+pixi task alias all compute
 # /snippet
 
 # Update README: replace manual commands with 'pixi run all'.
@@ -468,7 +473,8 @@ The README *says* how to run the pipeline.
 The Pixi tasks *do* it.
 This is the jump from documented to executable: the Actionability spectrum in action (A.2).
 The `depends-on` entries put the steps in order.
-The fetch task keeps the existing raw data when present; the compute task runs each time.
+The fetch task keeps the existing raw data when present.
+The compute task declares its inputs and output so Pixi can skip it when they and the command and environment are unchanged.
 
 Now `pixi run all` is the single command to reproduce everything.
 We update the README accordingly.
@@ -616,79 +622,18 @@ stellar-distance/
 
 **Advances**: A (verifiable results, not just "trust me")
 
-### 8. Declare and pin dependencies
+### 8. Pin dependencies
+
+So far, `pixi.toml` has declared the Python, Git, curl, and DataLad dependencies our project needs.
+We now start tracking the generated `pixi.lock` as an additional layer of reproducibility.
+It records the resolved package versions and hashes, allowing collaborators to install that selection instead of resolving dependencies again.
+
+Use `git add -f` to start tracking the lockfile despite its `.gitignore` entry.
+Once tracked, subsequent changes are handled normally by Git.
 
 ```sh
 # pragma: testrun full-build
-# pragma: render hidden
-# snippet: fetch-data-requests
-cat > code/fetch_data.py <<'PYEOF'
-#!/usr/bin/env python3
-"""Fetch nearby star parallax data from Gaia DR3 via TAP query."""
-
-import requests
-import sys
-
-GAIA_TAP_URL = "https://gea.esac.esa.int/tap-server/tap/sync"
-
-QUERY = """\
-SELECT TOP {limit}
-    source_id, parallax
-FROM gaiadr3.gaia_source
-WHERE parallax > {min_parallax}
-    AND parallax_error / parallax < {max_error_ratio}
-ORDER BY parallax DESC
-"""
-
-
-def fetch(output_path, limit=100, min_parallax=10, max_error_ratio=0.1):
-    query = QUERY.format(
-        limit=limit,
-        min_parallax=min_parallax,
-        max_error_ratio=max_error_ratio,
-    )
-    resp = requests.get(GAIA_TAP_URL, params={
-        "REQUEST": "doQuery",
-        "LANG": "ADQL",
-        "FORMAT": "csv",
-        "QUERY": query,
-    })
-    resp.raise_for_status()
-
-    with open(output_path, "w") as f:
-        f.write(resp.text)
-
-    n_stars = resp.text.count("\n") - 1
-    print(f"Fetched {n_stars} stars -> {output_path}")
-
-
-if __name__ == "__main__":
-    output = sys.argv[1] if len(sys.argv) > 1 else "raw/gaia_nearby.csv"
-    fetch(output)
-PYEOF
-# /snippet
-```
-
-Until now the analysis scripts used only Python's standard library (urllib, csv).
-To demonstrate how dependencies are handled, we rewrite the fetch script to use `requests`:
-
-{{< snippet id="fetch-data-requests" lang="python" lines="1-5,19,25-31" >}}
-
-Without declaring the dependency, a fresh machine fails with `ModuleNotFoundError`.
-This is a Portability failure that only surfaces when someone else tries to run the code.
-
-We add `requests` to `pixi.toml`, then start tracking the generated `pixi.lock` as an additional layer of reproducibility.
-Until now, we tracked dependency requirements but left the resolved environment untracked.
-The lockfile records the resolved versions and hashes, allowing collaborators to install that selection instead of resolving dependencies again:
-
-```sh
-# pragma: testrun full-build
-pixi add --pypi requests
-python3 - <<'PYEOF'
-from pathlib import Path
-path = Path(".gitignore")
-path.write_text(path.read_text().replace("\npixi.lock\n", "\n"))
-PYEOF
+git add -f pixi.lock
 ```
 
 ```sh
@@ -704,8 +649,8 @@ cat >> README.md <<'README'
   install with `pixi install --locked`
 README
 
-git add code/fetch_data.py pixi.toml pixi.lock .gitignore README.md
-git commit -m "rewrite fetch with requests, declare and pin dependencies"
+git add pixi.toml README.md
+git commit -m "build: pin the project environment"
 ```
 
 The manifest declares what we need; `pixi.lock` records the resolved package versions and hashes.
@@ -739,7 +684,6 @@ cd stellar-distance
 pixi install --locked
 
 pixi run --locked clean
-pixi run --locked all
 pixi run --locked test
 
 echo "=== PASSED: reproduced from scratch ==="
