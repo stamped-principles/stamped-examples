@@ -121,10 +121,12 @@ We start with a single Python script that does everything: queries the Gaia TAP 
 
 {{< snippet id="compute-everything" lang="python" lines="1-2,9-15,31-32" >}}
 
-The above is abbreviated. To follow along, see the {{< step-link step="1" text="full project at this step" >}}.
+The above is abbreviated.
+To follow along, see the {{< step-link step="1" text="full project at this step" >}}.
 
 When we run `python3 compute_everything.py`, we get a `distances.csv` with 100 rows.
-Proxima Centauri shows up at ~1.30 parsecs. Looks right!
+Proxima Centauri shows up at ~1.30 parsecs.
+Looks right!
 
 We put the script and its output in a directory and run `git init`.
 Two things happen at once: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
@@ -266,14 +268,17 @@ datalad run \
 ```
 
 This records exactly what command produced the data, creating a machine-readable provenance record in the commit message.
-The data is no longer just "a CSV that appeared somehow." It has a documented origin that anyone can inspect and replay with `datalad rerun`.
+The data is no longer just "a CSV that appeared somehow."
+It has a documented origin that anyone can inspect and replay with `datalad rerun`.
 
 This also addresses a Self-containment concern.
 Our analysis depends on an external network resource (the Gaia TAP API), which means it could break if the API changes or goes offline.
 Once we've fetched the data with `datalad run`, we have our own versioned copy.
-The API is still the authoritative source, but we're no longer silently dependent on it. The provenance record documents where the data came from, and the committed CSV means the analysis can proceed offline.
+The API is still the authoritative source, but we're no longer silently dependent on it.
+The provenance record documents where the data came from, and the committed CSV means the analysis can proceed offline.
 
-`datalad run` works on plain git repositories. No special initialization required.
+`datalad run` works on plain git repositories.
+No special initialization required.
 It creates a normal git commit whose message includes a machine-readable run record (the command, inputs, and outputs), so `git log` still tells the whole story.
 
 ```
@@ -441,7 +446,8 @@ The Makefile *does* it.
 This is the jump from documented to executable: the Actionability spectrum in action (A.2).
 Make also encodes dependencies: it knows what to re-run when an input changes, which is itself a lightweight form of provenance.
 
-Now `make` is the single command to reproduce everything. We update the README accordingly.
+Now `make` is the single command to reproduce everything.
+We update the README accordingly.
 
 **Advances**: A (executable specification, a runnable recipe)
 
@@ -658,7 +664,8 @@ To demonstrate how dependencies are handled, we rewrite the fetch script to use 
 
 {{< snippet id="fetch-data-requests" lang="python" lines="1-5,19,25-31" >}}
 
-Without declaring the dependency, a fresh machine fails with `ModuleNotFoundError`. This is a Portability failure that only surfaces when someone else tries to run the code.
+Without declaring the dependency, a fresh machine fails with `ModuleNotFoundError`.
+This is a Portability failure that only surfaces when someone else tries to run the code.
 
 We add `pyproject.toml` to make the assumption explicit, then generate a hash-locked `requirements.txt`:
 
@@ -738,7 +745,8 @@ We write `test/reproduce_from_scratch.sh`, a script that clones the repository i
 
 {{< step-link step="9" >}}
 
-If it passes, the research object doesn't depend on anything from our machine. No accumulated state, no forgotten steps.
+If it passes, the research object doesn't depend on anything from our machine.
+No accumulated state, no forgotten steps.
 The temp directory is thrown away afterward.
 
 This is the integration test for a research object.
@@ -845,7 +853,8 @@ The parent dataset records which exact version of each subdataset it depends on,
 
 ### Containers for portability and ephemerality
 
-Our `requirements.txt` pins Python packages, but what about the Python version itself? Or the OS libraries it links against?
+Our `requirements.txt` pins Python packages, but what about the Python version itself?
+Or the OS libraries it links against?
 A Dockerfile (pinned by image digest) freezes the OS and Python version.
 Running the pipeline inside a disposable container validates that the specifications are complete.
 If it works in a fresh container, it's not relying on anything from our machine.
