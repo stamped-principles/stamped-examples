@@ -162,7 +162,8 @@ That makes all subsequent steps low-risk.
 ```
 stellar-distance/
 ├── compute_everything.py
-└── distances.csv
+├── distances.csv
+└── pixi.toml
 ```
 
 This is where most analyses live forever, and that's fine for exploration.
@@ -308,7 +309,8 @@ It creates a normal git commit whose message includes a machine-readable run rec
 stellar-distance/
 ├── compute_distances.py
 ├── fetch_data.py
-└── gaia_nearby.csv
+├── gaia_nearby.csv
+└── pixi.toml
 ```
 
 **Advances**: T (programmatic provenance), S (versioned local copy of external data), A (provenance is re-executable)
@@ -339,8 +341,9 @@ stellar-distance/
 │   └── compute_distances.py
 ├── raw/
 │   └── gaia_nearby.csv
-└── output/
-    └── distances.csv
+├── output/
+│   └── distances.csv
+└── pixi.toml
 ```
 
 Code is what we write, raw is what we fetch, output is what we compute.
@@ -433,17 +436,23 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 # pragma: testrun full-build
 # pragma: render hidden
 # snippet: pixi-tasks
-pixi task add fetch 'test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv'
-pixi task add clean 'rm -f output/distances.csv'
 cat >> pixi.toml <<'TOML'
+
+[tasks.fetch]
+cmd = "test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv"
 
 [tasks.compute]
 cmd = "python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
 depends-on = ["fetch"]
 inputs = ["raw/gaia_nearby.csv", "code/compute_distances.py"]
 outputs = ["output/distances.csv"]
+
+[tasks.all]
+depends-on = ["compute"]
+
+[tasks.clean]
+cmd = "rm -f output/distances.csv"
 TOML
-pixi task alias all compute
 # /snippet
 
 # Update README: replace manual commands with 'pixi run all'.
@@ -463,9 +472,9 @@ git add pixi.toml README.md
 git commit -m "add Pixi tasks encoding the full pipeline"
 ```
 
-We encode the pipeline as Pixi tasks with their dependencies:
+Add these task definitions to `pixi.toml` to encode the pipeline and its dependencies:
 
-{{< snippet id="pixi-tasks" lang="sh" >}}
+{{< snippet id="pixi-tasks" lang="toml" >}}
 
 {{< step-link step="6" >}}
 
@@ -653,7 +662,6 @@ git add pixi.toml README.md
 git commit -m "build: pin the project environment"
 ```
 
-The manifest declares what we need; `pixi.lock` records the resolved package versions and hashes.
 Commit both files so a collaborator can install the recorded environment with `pixi install --locked`.
 This is where Portability meets Tracking: the environment specification is versioned alongside the code.
 
@@ -703,9 +711,7 @@ We write `test/reproduce_from_scratch.sh`, a script that clones the repository i
 
 {{< step-link step="9" >}}
 
-If it passes, the research object doesn't depend on anything from our machine.
-No accumulated state, no forgotten steps.
-The temp directory is thrown away afterward.
+If it passes, the research object reproduces from a fresh clone with a newly installed environment.
 
 This is the integration test for a research object.
 Ephemeral reproduction exercises almost every STAMPED property at once: the project must be self-contained (S), the pipeline must actually run (A), it must work in a fresh environment (P), and there's no prior state to lean on (E).
