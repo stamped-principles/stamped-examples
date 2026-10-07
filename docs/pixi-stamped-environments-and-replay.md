@@ -2,7 +2,7 @@
 
 Discussion draft, October 7, 2026.
 This document records the direction for the [Pixi stellar-distance walkthrough](../content/examples/pixi-stellar-distance-walkthrough.md) and develops questions for discussion before revising its presentation.
-The command patterns below are illustrative and have not been exercised for this document.
+The replay patterns below were exercised in a small disposable calculation; the validation section records the results and scope.
 
 ## Purpose and scope
 
@@ -128,21 +128,86 @@ Its `--onto` option selects a different starting state, and a plain `datalad rer
 These distinctions should inform the eventual replay instructions.
 See the [DataLad rerun reference](https://docs.datalad.org/en/stable/generated/man/datalad-rerun.html).
 
-For the preferred pattern, the simplest proposed historical replay procedure is:
+For continued work, save the changed data, code, or dependency specification and replay the recorded command on the current state:
 
-1. Obtain a separate checkout of the saved study revision containing the intended code, data, manifest, and lock
-2. Start Pixi in that checkout and install or run with `--locked`
-3. Invoke DataLad through that environment to replay the selected analytical run
-4. Compare the regenerated result with the retained result
+```bash
+pixi run --locked -- datalad rerun RUN_REV
+```
+
+`RUN_REV` identifies the recorded computation.
+In the fixture, changing data changed the answer from 6 to 15; changing code changed it from 6 to 8; changing the dependency selection used the newly selected package version.
+These were separate changes, each starting from the same baseline.
+
+For historical replay of a single run using the preferred direct-command pattern, use a separate checkout and select its environment before starting DataLad:
+
+```bash
+git switch --detach RUN_REV
+pixi run --locked -- datalad rerun --onto= --branch historical-replay RUN_REV
+```
+
+Here `RUN_REV` is a saved run whose code, data, manifest, and lock were committed before execution.
+The empty value in `--onto=` starts replay at the parent of the first selected run commit.
+`--branch` puts the replay on a new branch.
+Selecting the saved revision before launching Pixi ensures the initial environment agrees with that historical specification.
+This worked both in an existing checkout and in a fresh clone with no `.pixi/` directory.
+
+An explicit base supports applying a recorded procedure to another saved state:
+
+```bash
+pixi run --locked -- datalad rerun --onto DATA_REV --branch revised-data RUN_REV
+```
+
+In the tested case, `DATA_REV` changed only the input data and retained the baseline code and environment specification.
+The replay used the changed input and produced 15.
+If the base also changes dependencies, select that specification before launching the direct-command replay.
 
 The ordering matters.
-A command such as `pixi run --locked -- datalad rerun ...` chooses its environment before DataLad performs any later checkout.
-If a replay then switches to another revision, the running process can still inherit the environment chosen at launch.
-We should restore the intended revision first for the simple historical replay example.
+`pixi run --locked -- datalad rerun ...` chooses its environment before DataLad performs its checkout.
+Our historical replay from a newer environment restored the old manifest and lock but the directly recorded Python command still imported the newer package.
+`--onto` selects the starting project state; it does not activate an environment.
 
-For a single analytical run at a saved revision, this gives the first pattern a manageable replay procedure.
-A history that crosses several environment revisions needs a more explicit strategy: separate replay stages or commands that invoke Pixi after each relevant state is restored.
-That belongs in this discussion before we promise automatic historical environment selection throughout an arbitrary sequence.
+The alternative recording pattern can address this within each recorded invocation:
+
+```text
+Pixi task
+  -> datalad run [inputs and outputs] -- pixi run --locked -- python code/compute_distances.py ...
+```
+
+In the same experiment, the inner Pixi invocation read the restored historical specification and selected the old package version successfully.
+This remains an explicit analytical command, with no named task or nested DataLad recording inside it.
+It is a useful option when automatic environment selection after checkout matters.
+The direct-command pattern remains a convenient default when we select the checkout and environment together.
+
+These recipes select one recorded run.
+A history crossing several environment revisions needs a separate exercise with the intended `--since` range and replay ordering before we promise the same behavior throughout that sequence.
+
+## What we actually exercised
+
+The retained [validation script](../scripts/check_pixi_datalad_replay.py) creates a disposable Git project, installs dependencies through Pixi, records a small calculation through DataLad, and checks the output of each replay.
+The calculation multiplies an input number by a constant in the source and reports the installed `packaging` version alongside the answer.
+Reporting that version makes an environment change visible even when the numerical answer stays the same.
+
+All 15 checks passed on macOS ARM with Pixi 0.81.0, DataLad 1.7.1, and Python 3.12.15.
+The baseline uses input 2, multiplier 3, and `packaging` 24.2.
+
+| Case | Direct Python record | Explicit Pixi launcher record |
+|---|---|---|
+| Baseline | 6; package 24.2 | 6; package 24.2 |
+| Changed data at HEAD | 15; package 24.2 | 15; package 24.2 |
+| Changed code at HEAD | 8; package 24.2 | 8; package 24.2 |
+| Changed dependencies at HEAD | 6; package 25.0 | 6; package 25.0 |
+| Historical `--onto=` launched from newer environment | 6; package **25.0** | 6; package **24.2** |
+| Historical `--onto=` after selecting saved checkout/environment | 6; package 24.2 | 6; package 24.2 |
+| Explicit `--onto DATA_REV` | 15; package 24.2 | 15; package 24.2 |
+| Fresh clone, saved checkout, historical `--onto=` | 6; package 24.2 | Not exercised |
+
+The historical direct-command case deliberately checks the observed environment mismatch; passing that check does not mean it recovered the old environment.
+The script writes a local JSON summary containing expected and actual results, manifest and lock hashes, revisions, and tool versions.
+Execution logs and disposable repositories are retained outside the example repository.
+
+This validates replay mechanics with local Git-tracked inputs and a retained lock.
+It does not exercise Gaia acquisition, the stellar calculation, annex retrieval, Linux provisioning, task caching, or replay across a range of environment revisions.
+The walkthrough's scientific choices remain unchanged.
 
 “Exact environment” should mean the recorded package selection for a specified platform within the declared host requirements.
 It does not imply that macOS and Linux use identical binaries.
