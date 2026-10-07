@@ -3,41 +3,39 @@ title: "Pixi walkthrough: stellar distances from Gaia parallax"
 date: 2026-10-07
 description: "Building a STAMPED research object that computes stellar distances from Gaia DR3 parallax data"
 summary: "Incrementally builds a research object from a bare script to a tracked, portable, reproducible pipeline — motivated by real problems, not by acronym order."
-tags: ["STAMPED-intro", "gaia", "parallax", "walkthrough", "python", "datalad", "make"]
+tags: ["STAMPED-intro", "gaia", "parallax", "walkthrough", "python", "datalad", "pixi"]
 stamped_principles: ["S", "T", "A", "M", "P", "E", "D"]
 fair_principles: ["R", "A"]
 instrumentation_levels: ["workflow"]
 aspirations: ["reproducibility", "rigor", "transparency"]
 params:
-  tools: ["python", "git", "datalad", "make"]
+  tools: ["python", "git", "datalad", "pixi"]
   difficulty: "beginner"
-  verified: false
-  materialize_stem: "stellar-distance-walkthrough"
+  verified: true
+  materialize_stem: "pixi-stellar-distance-walkthrough"
 state: wip
 ---
 
-> **Development baseline:** This page duplicates the [original Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}) as a starting point for a Pixi adaptation.
-> The analysis and commands below still use the original tooling and have not been tested in this copy.
-> Links to the full project at each step currently refer to the original walkthrough's materialized projects.
+> **Pixi adaptation:** This page follows the [original Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}), replacing Make and virtual environment setup with Pixi.
 
 ```sh
-#!/bin/sh
+#!/usr/bin/env bash
 # pragma: testrun full-build
 # pragma: render hidden
-# pragma: requires sh git python3 curl make
+# pragma: requires sh bash git pixi
 # pragma: timeout 600
 # pragma: materialize stellar-distance
+
+# The snippet runner invokes sh; activation below requires Bash.
+if [ -z "${BASH_VERSION:-}" ]; then
+    exec bash "$0" "$@"
+fi
 
 set -eux
 PS4='> '
 
 # Random temp dir for containment and security (no deterministic paths under /tmp)
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
-
-# Build venv — tools needed by later steps
-python3 -m venv .venv
-. .venv/bin/activate
-pip install pip-tools datalad requests
 ```
 
 ## What we're building
@@ -64,6 +62,22 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 
 ### 1. Start a project
 
+Install [Pixi](https://pixi.sh/latest/installation/) and Git before starting.
+Create the project and enter its environment:
+
+```sh
+git init stellar-distance
+cd stellar-distance
+pixi init .
+printf '\npixi.lock\n' >> .gitignore
+pixi add "python>=3.10" git curl
+pixi add --pypi datalad
+pixi shell
+```
+
+The `pixi.toml` manifest declares Python and the tools used below.
+Run the following commands inside this shell; use `exit` to leave it.
+
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
@@ -71,6 +85,13 @@ git init stellar-distance
 cd stellar-distance
 git config user.email "demo@example.com"
 git config user.name "Demo User"
+
+# Set up the tools used throughout the walkthrough.
+pixi init .
+printf '\npixi.lock\n' >> .gitignore
+pixi add "python>=3.10" git curl
+pixi add --pypi datalad
+eval "$(pixi shell-hook --shell bash)"
 
 # snippet: compute-everything
 cat > compute_everything.py <<'PYEOF'
@@ -113,7 +134,7 @@ PYEOF
 # /snippet
 
 python3 compute_everything.py
-git add compute_everything.py distances.csv
+git add compute_everything.py distances.csv pixi.toml .gitignore .gitattributes
 git commit -m "Initial analysis: compute stellar distances"
 ```
 
@@ -383,6 +404,10 @@ Compute distances to nearby stars using parallax measurements from the
 
 ## Reproduce
 
+Install [Pixi](https://pixi.sh/latest/installation/) and Git, then enter the project environment:
+
+    pixi shell
+
     python3 code/fetch_data.py raw/gaia_nearby.csv
     python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 README
@@ -404,49 +429,48 @@ This is the minimum viable Actionability (A.1): sufficient instructions to repro
 
 **Advances**: A (someone can now follow instructions to reproduce), S (project is self-describing)
 
-### 6. Write a Makefile
+### 6. Define Pixi tasks
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-# snippet: makefile
-cat > Makefile <<'MAKE'
-.POSIX:
-
-all: output/distances.csv
-
-raw/gaia_nearby.csv:
-	python3 code/fetch_data.py raw/gaia_nearby.csv
-
-output/distances.csv: raw/gaia_nearby.csv code/compute_distances.py
-	python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
-
-clean:
-	rm -f output/distances.csv
-
-.PHONY: all clean
-MAKE
+# snippet: pixi-tasks
+pixi task add fetch 'test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv'
+pixi task add compute 'python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv' --depends-on fetch
+pixi task alias all compute
+pixi task add clean 'rm -f output/distances.csv'
 # /snippet
 
-# Update README: replace manual commands with 'make'
-sed -i '/^    python3 code\/fetch_data\.py/,/^    python3 code\/compute_distances\.py/c\    make' README.md
+# Update README: replace manual commands with 'pixi run all'.
+python3 - <<'PYEOF'
+from pathlib import Path
+path = Path("README.md")
+text = path.read_text()
+text = text.replace(
+    "    python3 code/fetch_data.py raw/gaia_nearby.csv\n"
+    "    python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv",
+    "    pixi run all",
+)
+path.write_text(text)
+PYEOF
 
-git add Makefile README.md
-git commit -m "Add Makefile encoding the full pipeline"
+git add pixi.toml README.md
+git commit -m "add Pixi tasks encoding the full pipeline"
 ```
 
-We encode the pipeline as `make` targets with their dependencies:
+We encode the pipeline as Pixi tasks with their dependencies:
 
-{{< snippet id="makefile" lang="makefile" >}}
+{{< snippet id="pixi-tasks" lang="sh" >}}
 
 {{< step-link step="6" >}}
 
 The README *says* how to run the pipeline.
-The Makefile *does* it.
+The Pixi tasks *do* it.
 This is the jump from documented to executable: the Actionability spectrum in action (A.2).
-Make also encodes dependencies: it knows what to re-run when an input changes, which is itself a lightweight form of provenance.
+The `depends-on` entries put the steps in order.
+The fetch task keeps the existing raw data when present; the compute task runs each time.
 
-Now `make` is the single command to reproduce everything.
+Now `pixi run all` is the single command to reproduce everything.
 We update the README accordingly.
 
 **Advances**: A (executable specification, a runnable recipe)
@@ -464,7 +488,7 @@ cat > test/fetch_reference_distances.sh <<'TESTSH'
 # Fetch GSP-Phot reference distances for the exact stars we computed
 set -eu
 
-ids=$(tail -n +2 output/distances.csv | cut -d, -f1 | paste -sd,)
+ids=$(tail -n +2 output/distances.csv | cut -d, -f1 | paste -sd, -)
 
 curl -s -o test/reference_distances.csv \
   --data-urlencode "REQUEST=doQuery" \
@@ -530,12 +554,10 @@ if __name__ == "__main__":
 PYEOF
 # /snippet
 
-# Add test target to Makefile
-sed -i 's/^\.PHONY: all clean/.PHONY: all test clean/' Makefile
-printf '\ntest: output/distances.csv\n\t./test/fetch_reference_distances.sh\n\tpython3 test/verify_distances.py\n' >> Makefile
+# Add a test task to Pixi.
+pixi task add test 'sh test/fetch_reference_distances.sh && python test/verify_distances.py' --depends-on all
 
-cat > .gitignore <<'GI'
-.venv/
+cat >> .gitignore <<'GI'
 test/reference_distances.csv
 GI
 
@@ -544,23 +566,23 @@ cat >> README.md <<'README'
 
 ## Verify
 
-    make test
+    pixi run test
 README
 
-git add test/ Makefile .gitignore README.md
+git add test/ pixi.toml .gitignore README.md
 git commit -m "Add verification test against Gaia GSP-Phot reference distances"
 
-make test
+pixi run test
 ```
 
 We write a verification script that fetches independent reference distances from Gaia's GSP-Phot pipeline and compares them to our computed values.
 
 {{< snippet id="verify-distances" lang="python" lines="1-2,8,19,26-31,34-35,43" >}}
 
-We add a `test` target to the Makefile so `make test` runs it:
+We add a `test` task to Pixi so `pixi run test` runs it:
 
 ```
-$ make test
+$ pixi run test
 Fetched 48 reference distances
 Compared 48 stars
 Max error: 0.27%
@@ -570,7 +592,7 @@ PASSED: all within 0.5%
 {{< step-link step="7" >}}
 
 Without verification, a research object asks others to trust the results.
-A test makes the claim falsifiable: anyone can run `make test` and see for themselves.
+A test makes the claim falsifiable: anyone can run `pixi run test` and see for themselves.
 
 Only 48 of our 100 stars have GSP-Phot distances because Gaia's sophisticated pipeline doesn't produce estimates for every star.
 Our simple one-line formula actually covers more stars than the pipeline does.
@@ -588,7 +610,7 @@ stellar-distance/
 │   ├── fetch_reference_distances.sh
 │   └── verify_distances.py
 ├── .gitignore
-├── Makefile
+├── pixi.toml
 └── README.md
 ```
 
@@ -645,21 +667,9 @@ if __name__ == "__main__":
     fetch(output)
 PYEOF
 # /snippet
-
-# snippet: pyproject
-cat > pyproject.toml <<'TOML'
-[project]
-name = "stellar-distance"
-version = "0.1.0"
-requires-python = ">=3.10"
-dependencies = [
-    "requests",
-]
-TOML
-# /snippet
 ```
 
-Until now the scripts used only Python's standard library (urllib, csv), so there was nothing to declare.
+Until now the analysis scripts used only Python's standard library (urllib, csv).
 To demonstrate how dependencies are handled, we rewrite the fetch script to use `requests`:
 
 {{< snippet id="fetch-data-requests" lang="python" lines="1-5,19,25-31" >}}
@@ -667,13 +677,18 @@ To demonstrate how dependencies are handled, we rewrite the fetch script to use 
 Without declaring the dependency, a fresh machine fails with `ModuleNotFoundError`.
 This is a Portability failure that only surfaces when someone else tries to run the code.
 
-We add `pyproject.toml` to make the assumption explicit, then generate a hash-locked `requirements.txt`:
-
-{{< snippet id="pyproject" lang="toml" >}}
+We add `requests` to `pixi.toml`, then start tracking the generated `pixi.lock` as an additional layer of reproducibility.
+Until now, we tracked dependency requirements but left the resolved environment untracked.
+The lockfile records the resolved versions and hashes, allowing collaborators to install that selection instead of resolving dependencies again:
 
 ```sh
 # pragma: testrun full-build
-pip-compile --generate-hashes -o requirements.txt pyproject.toml
+pixi add --pypi requests
+python3 - <<'PYEOF'
+from pathlib import Path
+path = Path(".gitignore")
+path.write_text(path.read_text().replace("\npixi.lock\n", "\n"))
+PYEOF
 ```
 
 ```sh
@@ -684,19 +699,18 @@ cat >> README.md <<'README'
 
 ## Requirements
 
-- Python >= 3.10
-- Dependencies declared in `pyproject.toml`; install with `pip install -r requirements.txt`
+- Pixi, Git, and a POSIX shell
+- Dependencies declared in `pixi.toml` and pinned in `pixi.lock`;
+  install with `pixi install --locked`
 README
 
-git add code/fetch_data.py pyproject.toml requirements.txt README.md
-git commit -m "Rewrite fetch with requests, declare and pin dependencies"
+git add code/fetch_data.py pixi.toml pixi.lock .gitignore README.md
+git commit -m "rewrite fetch with requests, declare and pin dependencies"
 ```
 
-There's a big difference between `requests` (any version) and `requests==2.32.5 --hash=sha256:...` (this exact build).
-The first is a declaration: it says what we need.
-The second is a distribution-ready specification: it says exactly what bytes to install.
-Hash pinning means even if a package is re-uploaded with the same version number, the install rejects it rather than silently using different code.
-This is where Portability meets Tracking: the environment specification itself is content-addressed.
+The manifest declares what we need; `pixi.lock` records the resolved package versions and hashes.
+Commit both files so a collaborator can install the recorded environment with `pixi install --locked`.
+This is where Portability meets Tracking: the environment specification is versioned alongside the code.
 
 {{< step-link step="8" >}}
 
@@ -722,13 +736,11 @@ echo "Working in: $(pwd)"
 git clone "$repo_url" stellar-distance
 cd stellar-distance
 
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+pixi install --locked
 
-make clean
-make
-make test
+pixi run --locked clean
+pixi run --locked all
+pixi run --locked test
 
 echo "=== PASSED: reproduced from scratch ==="
 TESTSH
@@ -737,9 +749,11 @@ chmod +x test/reproduce_from_scratch.sh
 
 git add test/reproduce_from_scratch.sh
 git commit -m "Add ephemeral reproduction script"
+
+sh test/reproduce_from_scratch.sh "$PWD"
 ```
 
-We write `test/reproduce_from_scratch.sh`, a script that clones the repository into a fresh temp directory, creates a virtual environment, installs dependencies, runs the pipeline, and runs the tests:
+We write `test/reproduce_from_scratch.sh`, a script that clones the repository into a fresh temp directory, installs the locked Pixi environment, runs the pipeline, and runs the tests:
 
 {{< snippet id="reproduce" lang="sh" >}}
 
@@ -761,7 +775,7 @@ This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-repro
 ### 10. Push to GitHub
 
 We push to a public repository.
-Now anyone can `git clone`, `pip install -r requirements.txt`, `make`, and reproduce the result.
+Now anyone can `git clone`, `pixi run --locked all`, and reproduce the result.
 
 Until this step the research object was self-contained and reproducible, but only on our machine.
 Publishing crosses the Distributability threshold (D.1): all components become persistently retrievable by others.
@@ -783,10 +797,9 @@ stellar-distance/
 │   ├── verify_distances.py
 │   └── reproduce_from_scratch.sh
 ├── .gitignore
-├── Makefile
-├── README.md
-├── pyproject.toml
-└── requirements.txt
+├── pixi.toml
+├── pixi.lock
+└── README.md
 ```
 
 **Advances**: D (persistently retrievable by others)
@@ -797,9 +810,9 @@ stellar-distance/
 |---|---|
 | **S** Self-contained | All code, data, and instructions under one root. README describes the project. Versioned local copy of fetched data. |
 | **T** Tracked | Git tracks all changes. `datalad run` records provenance for both fetch and analysis. Dependencies hash-pinned. |
-| **A** Actionable | `make` reproduces results. `make test` verifies. `datalad rerun` replays provenance. README documents the workflow. |
+| **A** Actionable | `pixi run all` reproduces results. `pixi run test` verifies. `datalad rerun` replays provenance. README documents the workflow. |
 | **M** Modular | `code/`, `raw/`, `output/`, `test/` are logically separated. |
-| **P** Portable | Dependencies declared in pyproject.toml, pinned in requirements.txt with hashes. No hardcoded paths. |
+| **P** Portable | Dependencies declared in pixi.toml, pinned in pixi.lock with hashes. No hardcoded paths. |
 | **E** Ephemeral | Reproduction script runs the full pipeline in a fresh temp directory with no prior state. |
 | **D** Distributable | Repository on GitHub. Anyone can clone and reproduce. |
 
@@ -853,8 +866,7 @@ The parent dataset records which exact version of each subdataset it depends on,
 
 ### Containers for portability and ephemerality
 
-Our `requirements.txt` pins Python packages, but what about the Python version itself?
-Or the OS libraries it links against?
+Our `pixi.lock` pins Python and its environment packages, but the host operating system is still external.
 A Dockerfile (pinned by image digest) freezes the OS and Python version.
 Running the pipeline inside a disposable container validates that the specifications are complete.
 If it works in a fresh container, it's not relying on anything from our machine.
@@ -863,7 +875,7 @@ See [Container venv overlay for Python development]({{< ref "examples/container-
 ### CI for ephemeral validation
 
 Step 9's reproduction test proves the pipeline works from scratch, but only when we remember to run it.
-A GitHub Actions workflow that clones, installs, and runs `make test` on every push catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
+A GitHub Actions workflow that clones, installs, and runs `pixi run test` on every push catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
 
 ### Archival distribution
 
@@ -877,7 +889,7 @@ graph TD
     subgraph external resources
         direction LR
         TAP[("Gaia TAP server<br/>(source data)")]
-        PyPI[("PyPI<br/>(dependencies)")]
+        Packages[("conda-forge / PyPI<br/>(dependencies)")]
     end
     subgraph local machine
         direction LR
@@ -898,17 +910,17 @@ graph TD
         Z -. "mints" .-> D
     end
     TAP -- "datalad run<br/>(fetch parallax data)" --> P
-    PyPI -- "pip install -r<br/>requirements.txt" --> E
-    PyPI -- "pip install -r<br/>requirements.txt" --> E2
+    Packages -- "pixi install<br/>--locked" --> E
+    Packages -- "pixi install<br/>--locked" --> E2
     P -- "git push" --> G
     D -. "resolves to" .-> Z
-    G -- "git clone;<br/>make" --> E2
+    G -- "git clone;<br/>pixi run --locked all" --> E2
 {{< /mermaid >}}
 
 ## Conclusion
 
 We started with a script that worked on one machine and ended with a research object that anyone can clone, run, verify, and cite.
-None of the individual steps were large: split some files, add a Makefile, write a test, pin dependencies.
+None of the individual steps were large: split some files, add Pixi tasks, write a test, pin dependencies.
 Each one addressed a specific failure mode: "I can't remember how to run this," "it doesn't work on your machine," "how do I know the numbers are right?"
 
 The STAMPED properties gave us a vocabulary for those failure modes and a way to check our progress.
