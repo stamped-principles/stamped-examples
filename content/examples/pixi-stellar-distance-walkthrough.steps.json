@@ -6,6 +6,5 @@
   "Add README with reproduction instructions",
   "add Pixi tasks encoding the full pipeline",
   "Add verification test against Gaia GSP-Phot reference distances",
-  "rewrite fetch with requests, declare and pin dependencies",
-  "Add ephemeral reproduction script"
+  "build: pin the project environment"
 ]

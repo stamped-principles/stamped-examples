@@ -25,7 +25,7 @@ state: wip
 # pragma: materialize stellar-distance
 
 # The snippet runner invokes sh; activation below requires Bash.
-if [ -z "${BASH_VERSION:-}" ]; then
+if [ -z "${BASH_VERSION:-}" ] || shopt -oq posix; then
     exec bash "$0" "$@"
 fi
 
@@ -113,11 +113,10 @@ Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider r
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-pixi init stellar-distance --platform linux-64 --platform osx-arm64 --platform osx-64
+pixi init stellar-distance --platform linux-64 --platform osx-arm64
 cd stellar-distance/
 pixi workspace platform edit linux-64 --glibc 2.34
 pixi workspace platform edit osx-arm64 --macos 14.0
-pixi workspace platform edit osx-64 --macos 15.0
 pixi add "python>=3.10" git curl
 pixi add --pypi datalad git-annex
 eval "$(pixi shell-hook --shell bash)"
@@ -565,10 +564,10 @@ curl -s -o test/reference_distances.csv \
   --data-urlencode "REQUEST=doQuery" \
   --data-urlencode "LANG=ADQL" \
   --data-urlencode "FORMAT=csv" \
-  --data-urlencode "QUERY=SELECT source_id, distance_gspphot FROM gaiadr3.gaia_source WHERE source_id IN ($ids) AND distance_gspphot IS NOT NULL" \
+  --data-urlencode "QUERY=SELECT source_id, distance_gspphot FROM gaiadr3.gaia_source WHERE source_id IN ($ids)" \
   "https://gea.esac.esa.int/tap-server/tap/sync"
 
-echo "Fetched $(tail -n +2 test/reference_distances.csv | wc -l) reference distances"
+echo "Fetched $(tail -n +2 test/reference_distances.csv | wc -l) reference rows"
 TESTSH
 # /snippet
 chmod +x test/fetch_reference_distances.sh
@@ -589,11 +588,20 @@ def main():
             computed[row["source_id"]] = float(row["distance_pc"])
 
     reference = {}
+    queried = set()
     with open("test/reference_distances.csv") as f:
         for row in csv.DictReader(f):
-            reference[row["source_id"]] = float(row["distance_gspphot"])
+            queried.add(row["source_id"])
+            if row["distance_gspphot"].strip():
+                reference[row["source_id"]] = float(row["distance_gspphot"])
 
     matched = set(computed) & set(reference)
+    print(f"Computed: {len(computed)}; matched: {len(matched)}; "
+          f"unmatched: {len(set(computed) - set(reference))}")
+    if set(computed) != queried:
+        print("ERROR: reference data were fetched for a different sample. "
+              "Remove test/reference_distances.csv and run pixi run test again.")
+        sys.exit(1)
     if not matched:
         print("ERROR: no matching source_ids between computed and reference")
         sys.exit(1)
@@ -617,7 +625,7 @@ def main():
             print(f"  {sid}: computed={c:.4f} ref={r:.4f} err={pct:.1f}%")
         sys.exit(1)
     else:
-        print("PASSED: all within 0.5%")
+        print("PASSED: all matched stars within 0.5%")
 
 
 if __name__ == "__main__":
@@ -653,18 +661,21 @@ pixi run test
 
 We fetch independent reference distances from Gaia's GSP-Phot pipeline and write a verification script that compares them to our computed values.
 
-{{< snippet id="verify-distances" lang="python" lines="1-2,8,19,26-31,34-35,43" >}}
+{{< snippet id="verify-distances" lang="python" lines="1-2,8,22-31,35-41,43-44,52" >}}
 
 We add a `test` task depending on reference acquisition, so `pixi run test` runs the comparison.
-The reference task keeps its downloaded CSV; removing that file explicitly requests a fresh acquisition.
+The reference task keeps its downloaded CSV, including source IDs without a GSP-Phot distance.
+Verification reports computed, matched, and unmatched counts and rejects reference data fetched for a different sample.
+Removing the reference file explicitly requests a fresh acquisition.
 On the first run:
 
 ```
 $ pixi run test
-Fetched 48 reference distances
+Fetched 100 reference rows
+Computed: 100; matched: 48; unmatched: 52
 Compared 48 stars
 Max error: 0.27%
-PASSED: all within 0.5%
+PASSED: all matched stars within 0.5%
 ```
 
 {{< step-link step="7" >}}
@@ -686,6 +697,7 @@ stellar-distance/
 │   └── distances.csv
 ├── test/
 │   ├── fetch_reference_distances.sh
+│   ├── reference_distances.csv
 │   └── verify_distances.py
 ├── .gitignore
 ├── pixi.toml
@@ -751,6 +763,25 @@ In a fresh clone of the repository, reproduce and verify the analysis with:
 pixi run --locked test
 ```
 
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+# Validate the reader-facing command in a clone without an existing environment.
+(
+    source_repo="$PWD"
+    clone_dir=$(mktemp -d "${TMPDIR:-/tmp}/stellar-reproduce-XXXXXXX")
+    git clone "$source_repo" "$clone_dir/stellar-distance"
+    cd "$clone_dir/stellar-distance"
+    git config user.email "demo@example.com"
+    git config user.name "Demo User"
+    test ! -d .pixi
+    test -f test/reference_distances.csv
+    rm output/distances.csv
+    pixi run --locked test
+    cmp "$source_repo/output/distances.csv" output/distances.csv
+)
+```
+
 Pixi prepares the recorded environment and runs the task dependencies, recomputing distances and checking them against the retained reference data.
 On subsequent runs in the same workspace, Pixi may reuse cached computation.
 The `.pixi/` directory is disposable: we preserve its specification and recreate the installed tools when needed.
@@ -782,6 +813,7 @@ stellar-distance/
 │   └── distances.csv
 ├── test/
 │   ├── fetch_reference_distances.sh
+│   ├── reference_distances.csv
 │   └── verify_distances.py
 ├── .gitignore
 ├── pixi.toml
