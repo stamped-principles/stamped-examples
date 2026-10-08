@@ -74,15 +74,3 @@ Pixi task → datalad run [inputs and outputs] -- pixi run --locked -- python co
 Here Pixi selects the environment after DataLad restores the project state.
 That makes environment selection part of the replayable command, at the cost of requiring Pixi during replay.
 Keep the analytical command explicit; recording a named task can hide changing behavior or invoke provenance recording again.
-
-## Choose how much environment history to retain
-
-A manifest describes acceptable dependencies; a retained lock identifies a resolved selection for each declared platform.
-Rebuilding from requirements supports continued work, while retaining a lock at a result checkpoint supports historical recovery.
-`--locked` rejects disagreement between the manifest and lock.
-Lock diffs and maintenance are costs to weigh against the history needed for the study.
-In either case, `.pixi/` remains a disposable installation.
-
-These single-run patterns were checked with a small local calculation on macOS ARM using Pixi 0.81.0 and DataLad 1.7.1, including independent code, data, and dependency changes and a fresh clone.
-The direct-command replay retained a newer active dependency after `--onto=`; preselecting the checkout or recording the explicit Pixi launcher recovered the historical selection.
-The repository's `scripts/check_pixi_datalad_replay.py` retains that fixture; cross-platform and multi-run histories require their own checks.

@@ -73,8 +73,7 @@ pixi add "python>=3.10" git curl
 pixi add --pypi datalad git-annex
 ```
 
-{{< detail title="Why does Pixi need these platform settings?" >}}
-We install git-annex as a [wheel](https://pypi.org/project/git-annex/): a package containing a ready-to-run executable, so we do not have to compile it ourselves.
+{{< detail title="Why does Pixi need these platform settings?" >}} We install git-annex as a [wheel](https://pypi.org/project/git-annex/): a package containing a ready-to-run executable, so we do not have to compile it ourselves.
 That executable depends on facilities provided by the operating system.
 The wheels used here require macOS 14 on Apple Silicon, or glibc 2.34 on Linux.
 [glibc](https://www.gnu.org/software/libc/) is a core library supplied by many Linux distributions.
@@ -85,8 +84,7 @@ Consequently, installation can fail even on a sufficiently recent machine: Pixi 
 
 The platform commands raise the project's declared minimums so Pixi can select these wheels.
 They do not upgrade your computer; it must already meet those requirements.
-See [Pixi's platform configuration guide](https://pixi.prefix.dev/latest/workspace/multi_platform_configuration/) for how these settings also support sharing a project across operating systems.
-{{< /detail >}}
+See [Pixi's platform configuration guide](https://pixi.prefix.dev/latest/workspace/multi_platform_configuration/) for how these settings also support sharing a project across operating systems. {{< /detail >}}
 
 Start an interactive shell in the project environment:
 
@@ -185,13 +183,14 @@ When we run `python compute_everything.py`, we get a `distances.csv` with 100 ro
 Proxima Centauri shows up at ~1.30 parsecs.
 Looks right!
 
-We put the script and its output in a directory and run `git init`.
-Two things happen at once: we draw a boundary around the project (Self-containment), and we start recording its history (Tracking).
-The project boundary follows the "don't look up" rule: everything needed for this work lives inside one root, and nothing outside should be implicitly required.
-Git gives us content-addressed version control, so we can track changes over time and identify each project state by its commit.
+Keeping code, results, and the dependency manifest under `stellar-distance/` gives the project a common root (Self-containment).
+The "don't look up" rule we follow keeps local dependencies within that boundary, while external requirements—Pixi's package sources and the Gaia API—are explicit.
+In the next step, we also retain the raw data locally.
 
-From now on, every change is recorded and reversible.
-That makes all subsequent steps low-risk.
+`git init` prepares the repository; `git add` and `git commit` record our first snapshot (Tracking).
+Each commit identifies the saved contents and their place in the project's history.
+As we commit subsequent steps, we can compare snapshots and restore earlier versions of tracked files.
+That makes experimentation easier.
 
 ```
 stellar-distance/
@@ -421,6 +420,22 @@ The `--input` flags declare inputs and `--output` declares outputs.
 Now the full pipeline, from raw data to final results, has machine-readable provenance.
 Anyone can inspect the commit messages to see exactly how each file was produced.
 
+{{< detail title="What if we do not know the output filenames in advance?" >}} We can omit the input and output declarations and let `datalad run` save the file changes made by a successful command:
+
+```sh
+pixi run datalad run \
+  python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+```
+
+Start with a clean working tree: commit any intended code changes first.
+Without `--explicit`, DataLad saves changes throughout the dataset, including newly created, non-ignored files; avoid unrelated edits during the run.
+
+The command and resulting changes remain recorded, but DataLad has no declared inputs to retrieve or outputs to prepare before execution.
+This trades explicit, machine-readable input and output roles for a shorter command.
+Ignored files and files outside the dataset are not captured, and terminal output needs redirection to a file if we want to preserve it.
+If existing annexed outputs need overwriting, declare their paths or output directory so DataLad can prepare them for writing.
+See the [DataLad run documentation](https://docs.datalad.org/en/maint/generated/man/datalad-run.html) for details. {{< /detail >}}
+
 {{< step-link step="4" >}}
 
 **Advances**: T (full pipeline provenance), A (analysis is re-executable via `datalad rerun`)
@@ -506,24 +521,25 @@ git add pixi.toml README.md
 git commit -m "add Pixi tasks encoding the full pipeline"
 ```
 
-Add these task definitions to `pixi.toml` to encode the pipeline and its dependencies:
+We can improve Actionability further by adding task definitions to `pixi.toml` to encode the pipeline and its dependencies.
+Many readers will recognize a pattern similar to a Makefile.
+Pixi’s task definitions are more verbose, but their explicit fields can be easier to follow.
+They also connect each step to its software environment; different tasks can use different environments, although this example needs only one.
+
+The README *says* how to run the pipeline.
+The Pixi tasks *do* it.
+This is the jump from documented to executable: the Actionability spectrum in action (A.2):
 
 {{< snippet id="pixi-tasks" lang="toml" >}}
 
 {{< step-link step="6" >}}
 
-The README *says* how to run the pipeline.
-The Pixi tasks *do* it.
-This is the jump from documented to executable: the Actionability spectrum in action (A.2).
+
 The `depends-on` entries put the steps in order.
 The fetch task keeps the existing raw data when present.
 The compute task declares its inputs and output so Pixi can skip unchanged work.
 When it runs, DataLad records the explicit Python command; the scripts themselves remain independent of DataLad.
 The same manifest now describes both our tools and how to use them.
-
-Many readers will recognize a pattern similar to a Makefile.
-Pixi’s task definitions are more verbose, but their explicit fields can be easier to follow.
-They also connect each step to its software environment; different tasks can use different environments, although this example needs only one.
 
 Now `pixi run all` is the single command to reproduce everything.
 We update the README accordingly.
@@ -681,8 +697,9 @@ stellar-distance/
 ### 8. Retain a dependency selection
 
 So far, `pixi.toml` has declared the Python, Git, curl, and DataLad dependencies our project needs.
-Those requirements can allow several versions; tighter constraints narrow the choice but do not identify every transitive dependency.
-For a result we want to share and recover, we now retain the generated `pixi.lock`.
+Those requirements can allow several versions.
+We can edit our dependency declarations to be more specific (specifying minimum/maximum/specific supported versions); however, even if we are very specific we are still not tracking transitive dependencies (the dependencies of our declared dependencies) so users of our code may still struggle to reproduce our results in the future.
+For a result we want to share and recover, we can record a more exact specification of our environment using the `pixi.lock` file.
 It records the resolved package versions and hashes for each declared platform, including platform-specific conda-forge binaries.
 This lets collaborators install the selected packages appropriate to their platform.
 
@@ -855,6 +872,7 @@ For long-term citability, deposit the repository on [Zenodo](https://zenodo.org/
 Push the container image to a registry.
 Mirror data to multiple remotes so no single point of failure breaks reproducibility.
 
+<!-- snapper:off -->
 {{< mermaid >}}
 graph TD
     subgraph external resources
@@ -887,6 +905,7 @@ graph TD
     D -. "resolves to" .-> Z
     G -- "git clone;<br/>pixi run --locked all" --> E2
 {{< /mermaid >}}
+<!-- snapper:on -->
 
 ## Conclusion
 
