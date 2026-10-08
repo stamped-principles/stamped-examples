@@ -1,0 +1,10 @@
+[
+  "Initial analysis: compute stellar distances",
+  "Split into fetch and compute scripts",
+  "Organize into code/, raw/, output/",
+  "Compute distances for 100 nearest stars",
+  "Add README with reproduction instructions",
+  "add Pixi tasks encoding the full pipeline",
+  "Add verification test against Gaia GSP-Phot reference distances",
+  "build: pin the project environment"
+]
