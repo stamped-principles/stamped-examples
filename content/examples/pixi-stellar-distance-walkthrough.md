@@ -131,7 +131,7 @@ printf '\npixi.lock\n' >> .gitignore
 
 # snippet: compute-everything
 cat > compute_everything.py <<'PYEOF'
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Quick proof of concept: fetch Gaia parallax data and compute distances."""
 
 import csv
@@ -169,7 +169,7 @@ print("Done — wrote distances.csv")
 PYEOF
 # /snippet
 
-python3 compute_everything.py
+python compute_everything.py
 git add compute_everything.py distances.csv pixi.toml .gitignore .gitattributes
 git commit -m "Initial analysis: compute stellar distances"
 ```
@@ -181,7 +181,7 @@ We start with a single Python script that does everything: queries the Gaia TAP 
 The above is abbreviated.
 To follow along, see the {{< step-link step="1" text="full project at this step" >}}.
 
-When we run `python3 compute_everything.py`, we get a `distances.csv` with 100 rows.
+When we run `python compute_everything.py`, we get a `distances.csv` with 100 rows.
 Proxima Centauri shows up at ~1.30 parsecs.
 Looks right!
 
@@ -216,7 +216,7 @@ Each step that follows addresses one of these failure modes.
 # pragma: render hidden
 # snippet: fetch-data
 cat > fetch_data.py <<'PYEOF'
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Fetch nearby star parallax data from Gaia DR3 via TAP query."""
 
 import sys
@@ -265,7 +265,7 @@ PYEOF
 
 # snippet: compute-distances
 cat > compute_distances.py <<'PYEOF'
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Compute stellar distances from Gaia parallax measurements."""
 
 import csv
@@ -317,7 +317,7 @@ Now we do something important: instead of just running `fetch_data.py`, we wrap 
 datalad run \
   --message "Fetch 100 nearest stars from Gaia DR3" \
   --output gaia_nearby.csv \
-  python3 fetch_data.py gaia_nearby.csv
+  python fetch_data.py gaia_nearby.csv
 ```
 
 ```sh
@@ -354,7 +354,7 @@ stellar-distance/
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-python3 compute_distances.py gaia_nearby.csv distances.csv
+python compute_distances.py gaia_nearby.csv distances.csv
 git add distances.csv
 git commit -m "Compute distances from fetched data"
 
@@ -409,7 +409,7 @@ datalad run \
   --input raw/gaia_nearby.csv \
   --input code/compute_distances.py \
   --output output/distances.csv \
-  python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+  python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 ```
 
 ```sh
@@ -443,8 +443,8 @@ Compute distances to nearby stars using parallax measurements from the
 
 ## Reproduce
 
-    python3 code/fetch_data.py raw/gaia_nearby.csv
-    python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
+    python code/fetch_data.py raw/gaia_nearby.csv
+    python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv
 README
 # /snippet
 
@@ -490,13 +490,13 @@ TOML
 # /snippet
 
 # Update README: replace manual commands with 'pixi run all'.
-python3 - <<'PYEOF'
+python - <<'PYEOF'
 from pathlib import Path
 path = Path("README.md")
 text = path.read_text()
 text = text.replace(
-    "    python3 code/fetch_data.py raw/gaia_nearby.csv\n"
-    "    python3 code/compute_distances.py raw/gaia_nearby.csv output/distances.csv",
+    "    python code/fetch_data.py raw/gaia_nearby.csv\n"
+    "    python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv",
     "    pixi run all",
 )
 path.write_text(text)
@@ -559,7 +559,7 @@ chmod +x test/fetch_reference_distances.sh
 
 # snippet: verify-distances
 cat > test/verify_distances.py <<'PYEOF'
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Compare our computed distances against Gaia GSP-Phot reference distances."""
 
 import csv
