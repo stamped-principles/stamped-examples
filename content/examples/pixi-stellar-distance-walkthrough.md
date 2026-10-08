@@ -81,9 +81,11 @@ printf '\npixi.lock\n' >> .gitignore
 Our project depends on Python and tools such as Git, curl, and DataLad.
 `pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
 We track this manifest alongside the code.
-The platform settings declare the minimum host requirements for the git-annex wheel: glibc 2.34 on Linux, macOS 14 on Apple Silicon, and macOS 15 on Intel.
 Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider retaining the generated lockfile in step 8.
 `pixi shell` means all subsequent commands have access to the dependencies installed into the environment.
+
+{{< detail title="Platform requirements for git-annex" >}} The platform settings declare the minimum host requirements for the git-annex wheel: glibc 2.34 on Linux, macOS 14 on Apple Silicon, and macOS 15 on Intel.
+These settings let Pixi select compatible packages for each declared platform. {{< /detail >}}
 
 ```sh
 # pragma: testrun full-build
@@ -494,6 +496,10 @@ The compute task declares its inputs and output so Pixi can skip unchanged work.
 When it runs, DataLad records the explicit Python command; the scripts themselves remain independent of DataLad.
 The same manifest now describes both our tools and how to use them.
 
+Many readers will recognize a pattern similar to a Makefile.
+Pixi’s task definitions are more verbose, but their explicit fields can be easier to follow.
+They also connect each step to its software environment; different tasks can use different environments, although this example needs only one.
+
 Now `pixi run all` is the single command to reproduce everything.
 We update the README accordingly.
 
@@ -655,8 +661,8 @@ For a result we want to share and recover, we now retain the generated `pixi.loc
 It records the resolved package versions and hashes for each declared platform, including platform-specific conda-forge binaries.
 This lets collaborators install the selected packages appropriate to their platform.
 
-Use `git add -f` to start tracking the lockfile despite its `.gitignore` entry.
-Once tracked, subsequent changes are handled normally by Git.
+{{< detail title="Tracking a previously ignored lockfile" >}} We initially excluded `pixi.lock` from Git.
+`git add -f` overrides that exclusion; once tracked, subsequent changes are handled normally by Git. {{< /detail >}}
 
 ```sh
 # pragma: testrun full-build
@@ -681,7 +687,15 @@ git commit -m "build: pin the project environment"
 ```
 
 Commit both files so a collaborator can install the recorded environment with `pixi install --locked`.
-`--locked` rejects a manifest/lock mismatch instead of updating the lock automatically. Ordinary Pixi execution reuses a suitable lock but can update it when requirements change. Keeping lock changes in Git can produce noisy diffs, so retaining this result checkpoint is a deliberate choice; continuous lock tracking need not be every project's default. This is where Portability meets Tracking: we choose how precisely to preserve the environment alongside the code. See the [Pixi lockfile documentation](https://pixi.prefix.dev/latest/workspace/lock_file/) for the execution options.
+`--locked` rejects a manifest/lock mismatch instead of updating the lock automatically.
+Ordinary Pixi execution reuses a suitable lock but can update it when requirements change.
+
+Retaining a resolved environment strengthens rigor by making a particular result easier to recover, but maintaining it can cost convenience and efficiency during exploration.
+Lock changes can produce noisy diffs and interrupt otherwise useful dependency updates.
+One compromise is to preserve the manifest and lock on a result branch or tagged checkpoint while continuing development separately.
+Keeping a built container image offers another way to retain the environment, with storage and distribution costs: the image becomes a durable artifact even though the containers launched from it can remain disposable.
+The appropriate balance depends on what we need to recover, and how often.
+See the [Pixi lockfile documentation](https://pixi.prefix.dev/latest/workspace/lock_file/) for execution options.
 
 {{< step-link step="8" >}}
 
@@ -689,57 +703,20 @@ Commit both files so a collaborator can install the recorded environment with `p
 
 ### 9. Reproduce from scratch
 
+In a fresh clone of the repository, reproduce and verify the analysis with:
+
 ```sh
-# pragma: testrun full-build
-# pragma: render hidden
-# snippet: reproduce
-cat > test/reproduce_from_scratch.sh <<'TESTSH'
-#!/bin/sh
-# Reproduce the full pipeline from a clean clone in a temp directory.
-set -eux
-PS4='> '
-
-repo_url="${1:?Usage: $0 <repo-url-or-path>}"
-
-cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
-echo "Working in: $(pwd)"
-
-git clone "$repo_url" stellar-distance
-cd stellar-distance
-
-pixi install --locked
-
-pixi run --locked clean
 pixi run --locked test
-
-echo "=== PASSED: reproduced from scratch ==="
-TESTSH
-# /snippet
-chmod +x test/reproduce_from_scratch.sh
-
-git add test/reproduce_from_scratch.sh
-git commit -m "Add ephemeral reproduction script"
-
-sh test/reproduce_from_scratch.sh "$PWD"
 ```
 
-We write `test/reproduce_from_scratch.sh`, a script that clones the repository into a fresh temp directory, installs the locked Pixi environment, runs the pipeline, and runs the tests:
-
-{{< snippet id="reproduce" lang="sh" >}}
-
-{{< step-link step="9" >}}
-
-If it passes, the research object reproduces from a fresh clone with a newly installed environment.
+Pixi prepares the recorded environment and runs the task dependencies, recomputing distances and checking them against the retained reference data.
+On subsequent runs in the same workspace, Pixi may reuse cached computation.
 The `.pixi/` directory is disposable: we preserve its specification and recreate the installed tools when needed.
 
-This is the integration test for a research object.
-Ephemeral reproduction exercises almost every STAMPED property at once: the project must be self-contained (S), the pipeline must actually run (A), it must work in a fresh environment (P), and there's no prior state to lean on (E).
-If `reproduce_from_scratch.sh` passes, we have strong evidence that the research object is solid.
-If it fails, the error tells us which property broke.
+This brings several STAMPED properties together: the project supplies its inputs and instructions (S), its tasks make the analysis executable (A), and its environment can be recreated (P, E).
+For a more careful treatment of isolated reproduction, see the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-reproducer" >}}).
 
-This is the [ephemeral shell reproducer]({{< ref "examples/ephemeral-shell-reproducer" >}}) pattern applied to our own project.
-
-**Advances**: E (results produced without prior state), A (reproduction is a single command), S (validates that nothing outside the boundary is needed)
+**Advances**: E (replaceable working environment), A (reproduction is a single command), S (inputs and instructions travel with the project)
 
 ### 10. Push to GitHub
 
@@ -763,8 +740,7 @@ stellar-distance/
 │   └── distances.csv
 ├── test/
 │   ├── fetch_reference_distances.sh
-│   ├── verify_distances.py
-│   └── reproduce_from_scratch.sh
+│   └── verify_distances.py
 ├── .gitignore
 ├── pixi.toml
 ├── pixi.lock
@@ -782,7 +758,7 @@ stellar-distance/
 | **A** Actionable | `pixi run all` reproduces results. `pixi run test` verifies. `datalad rerun` replays provenance. README documents the workflow. |
 | **M** Modular | `code/`, `raw/`, `output/`, `test/` are logically separated. |
 | **P** Portable | Dependencies declared in pixi.toml, pinned in pixi.lock with hashes. No hardcoded paths. |
-| **E** Ephemeral | Reproduction script runs the full pipeline in a fresh temp directory with no prior state. |
+| **E** Ephemeral | A fresh clone recreates the environment and recomputes from retained inputs. |
 | **D** Distributable | Repository on GitHub. Anyone can clone and reproduce. |
 
 ## Where to go from here
@@ -845,7 +821,7 @@ Pixi also supports separate environments for different tasks and dependency spec
 ### CI for ephemeral validation
 
 Step 9's reproduction test proves the pipeline works from scratch, but only when we remember to run it.
-A GitHub Actions workflow that clones, installs, and runs `pixi run test` on every push catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
+A GitHub Actions workflow that clones and runs `pixi run --locked test` on every push catches environment drift automatically: the same ephemeral test from step 9, run by someone else's machine on every change.
 
 ### Archival distribution
 
@@ -868,7 +844,7 @@ graph TD
         style E stroke-dasharray: 5 5
         E2["ephemeral clone<br/>(verify reproducibility)"]
         style E2 stroke-dasharray: 5 5
-        P -- "test/reproduce_from_scratch.sh $PWD" --> E
+        P -- "fresh clone; pixi run --locked test" --> E
     end
     subgraph sharing and archival
         direction LR
