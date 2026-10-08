@@ -62,19 +62,27 @@ The analysis is deliberately simple so the focus stays on *how* we organize, tra
 ### 1. Set up our project
 
 Install [Pixi](https://pixi.sh/latest/installation/) before starting.
-Create the project and enter its environment:
+Create the project and define its dependencies:
 
 ```sh
-pixi init stellar-distance --platform linux-64 --platform osx-arm64 --platform osx-64
+pixi init stellar-distance --platform linux-64 --platform osx-arm64
 cd stellar-distance/
 pixi workspace platform edit linux-64 --glibc 2.34
 pixi workspace platform edit osx-arm64 --macos 14.0
-pixi workspace platform edit osx-64 --macos 15.0
 pixi add "python>=3.10" git curl
 pixi add --pypi datalad git-annex
-pixi shell
-git init
+```
 
+Start an interactive shell in the project environment:
+
+```sh
+pixi shell
+```
+
+Once its prompt appears, run the following commands inside that shell:
+
+```sh
+git init
 printf '\npixi.lock\n' >> .gitignore
 ```
 
@@ -82,10 +90,27 @@ Our project depends on Python and tools such as Git, curl, and DataLad.
 `pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
 We track this manifest alongside the code.
 Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider retaining the generated lockfile in step 8.
-`pixi shell` means all subsequent commands have access to the dependencies installed into the environment.
 
-{{< detail title="Platform requirements for git-annex" >}} The platform settings declare the minimum host requirements for the git-annex wheel: glibc 2.34 on Linux, macOS 14 on Apple Silicon, and macOS 15 on Intel.
-These settings let Pixi select compatible packages for each declared platform. {{< /detail >}}
+{{< detail title="Running commands in the Pixi environment" >}} `pixi shell` opens a new interactive shell with the project's dependencies available.
+We use it so subsequent commands can be written without a prefix.
+Alternatively, stay in your existing shell and prefix commands with `pixi run`, for example `pixi run git init` or `pixi run python code/compute_distances.py ...`.
+Enter commands after the new prompt appears; commands following `pixi shell` in a script would wait until that shell exits.
+Use `exit` to return to your original shell. {{< /detail >}}
+
+{{< detail title="Why does Pixi need these platform settings?" >}}
+We install git-annex as a [wheel](https://pypi.org/project/git-annex/): a package containing a ready-to-run executable, so we do not have to compile it ourselves.
+That executable depends on facilities provided by the operating system.
+The wheels used here require macOS 14 on Apple Silicon, or glibc 2.34 on Linux.
+[glibc](https://www.gnu.org/software/libc/) is a core library supplied by many Linux distributions.
+
+Pixi chooses packages for the systems the **project promises to support**, rather than simply choosing whatever runs on your computer.
+Its default targets are older than these wheels require.
+Consequently, installation can fail even on a sufficiently recent machine: Pixi is trying to find a package that would also work on older systems.
+
+The platform commands raise the project's declared minimums so Pixi can select these wheels.
+They do not upgrade your computer; it must already meet those requirements.
+See [Pixi's platform configuration guide](https://pixi.prefix.dev/latest/workspace/multi_platform_configuration/) for how these settings also support sharing a project across operating systems.
+{{< /detail >}}
 
 ```sh
 # pragma: testrun full-build
