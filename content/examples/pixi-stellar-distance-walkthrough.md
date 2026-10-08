@@ -2,12 +2,12 @@
 title: "Pixi walkthrough: stellar distances from Gaia parallax"
 date: 2026-10-07
 description: "Building a STAMPED research object that computes stellar distances from Gaia DR3 parallax data"
-summary: "Incrementally builds a research object from a bare script to a tracked, portable, reproducible pipeline — motivated by real problems, not by acronym order."
+summary: "Build a reproducible stellar-distance analysis with Pixi and DataLad, combining straightforward setup, executable tasks, and deliberate choices about what to preserve."
 tags: ["STAMPED-intro", "gaia", "parallax", "walkthrough", "python", "datalad", "pixi"]
 stamped_principles: ["S", "T", "A", "M", "P", "E", "D"]
 fair_principles: ["R", "A"]
 instrumentation_levels: ["workflow"]
-aspirations: ["reproducibility", "rigor", "transparency"]
+aspirations: ["reproducibility", "rigor", "transparency", "efficiency"]
 params:
   tools: ["python", "git", "datalad", "pixi"]
   difficulty: "beginner"
@@ -73,30 +73,6 @@ pixi add "python>=3.10" git curl
 pixi add --pypi datalad git-annex
 ```
 
-Start an interactive shell in the project environment:
-
-```sh
-pixi shell
-```
-
-Once its prompt appears, run the following commands inside that shell:
-
-```sh
-git init
-printf '\npixi.lock\n' >> .gitignore
-```
-
-Our project depends on Python and tools such as Git, curl, and DataLad.
-`pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
-We track this manifest alongside the code.
-Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider retaining the generated lockfile in step 8.
-
-{{< detail title="Running commands in the Pixi environment" >}} `pixi shell` opens a new interactive shell with the project's dependencies available.
-We use it so subsequent commands can be written without a prefix.
-Alternatively, stay in your existing shell and prefix commands with `pixi run`, for example `pixi run git init` or `pixi run python code/compute_distances.py ...`.
-Enter commands after the new prompt appears; commands following `pixi shell` in a script would wait until that shell exits.
-Use `exit` to return to your original shell. {{< /detail >}}
-
 {{< detail title="Why does Pixi need these platform settings?" >}}
 We install git-annex as a [wheel](https://pypi.org/project/git-annex/): a package containing a ready-to-run executable, so we do not have to compile it ourselves.
 That executable depends on facilities provided by the operating system.
@@ -111,6 +87,30 @@ The platform commands raise the project's declared minimums so Pixi can select t
 They do not upgrade your computer; it must already meet those requirements.
 See [Pixi's platform configuration guide](https://pixi.prefix.dev/latest/workspace/multi_platform_configuration/) for how these settings also support sharing a project across operating systems.
 {{< /detail >}}
+
+Start an interactive shell in the project environment:
+
+```sh
+pixi shell
+```
+
+{{< detail title="Running commands in the Pixi environment" >}} `pixi shell` opens a new interactive shell with the project's dependencies available.
+We use it so subsequent commands can be written without a prefix.
+Alternatively, stay in your existing shell and prefix commands with `pixi run`, for example `pixi run git init` or `pixi run python code/compute_distances.py ...`.
+Enter commands after the new prompt appears; commands following `pixi shell` in a script would wait until that shell exits.
+Use `exit` to return to your original shell. {{< /detail >}}
+
+Once its prompt appears, run the following commands inside that shell:
+
+```sh
+git init
+printf '\npixi.lock\n' >> .gitignore
+```
+
+Our project depends on Python and tools such as Git, curl, and DataLad.
+`pixi add` installs these dependencies and records them in the `pixi.toml` manifest.
+We track this manifest alongside the code.
+Pixi keeps installed tools in the ignored `.pixi/` directory; we will consider retaining the generated lockfile in step 8.
 
 ```sh
 # pragma: testrun full-build
