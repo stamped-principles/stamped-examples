@@ -29,16 +29,22 @@ The existing setup supports these goals, but leaves several things to coordinate
 
 [Pixi](https://pixi.prefix.dev/latest/) brings task execution and environment selection into the same project configuration.
 It builds on conda-forge’s language-agnostic, cross-platform package ecosystem to manage Python interpreters, libraries, and command-line tools together.
-The equivalent of targets in the previous Makefile are "tasks". Tasks are specified in the existing Python metadata, and invoking a task prepares the environment specified by the checked-out project.
+The equivalent of targets in the previous Makefile are "tasks".
+Tasks are specified in the existing Python metadata, and invoking a task prepares the environment specified by the checked-out project.
 This reduces the setup knowledge collaborators must supply themselves and makes changes to the workflow and its environment easier to track together.
 
 Combining Pixi with DataLad's execution records, we can express both how to run the analysis and which inputs, outputs, and environment specifications belong to a run.
 STAMPED gives us a vocabulary for deciding how much of that context to retain.
 
-## 1. Reuse the completed project
+## 1. Migrate to Pixi
 
-If you completed the Gaia walkthrough, continue in that project.
-Otherwise, install [Pixi](https://pixi.prefix.dev/latest/installation/) and retrieve the completed example (`pixi exec` supplies Git in a temporary environment, without requiring a separate Git installation.):
+If you completed the Gaia walkthrough, you can continue in that directory but copy a setup script for migrating to using pixi for this analysis:
+
+```sh
+cp ../static/examples/gaia-pixi/migrate-gaia-to-pixi.py .
+```
+
+Starting afresh,  make sure to install [Pixi](https://pixi.prefix.dev/latest/installation/) and retrieve the completed example (`pixi exec` supplies Git in a temporary environment, without requiring a separate Git installation.):
 
 ```sh
 # pragma: testrun full-build
@@ -47,9 +53,9 @@ Otherwise, install [Pixi](https://pixi.prefix.dev/latest/installation/) and retr
 # pragma: requires sh git pixi
 # pragma: timeout 900
 # pragma: materialize stellar-distance
-# pragma: source static/examples/gaia-pixi/setup-pixi.py
+# pragma: source static/examples/gaia-pixi/migrate-gaia-to-pixi.py
 set -eu
-setup_script="$PWD/static/examples/gaia-pixi/setup-pixi.py"
+setup_script="$PWD/static/examples/gaia-pixi/migrate-gaia-to-pixi.py"
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
 ```
 
@@ -61,17 +67,22 @@ pixi exec --spec git -- git clone --single-branch \
 cd stellar-distance
 ```
 
-Download [setup-pixi.py](/examples/gaia-pixi/setup-pixi.py) into the project directory and run it:
+The clone includes `migrate-gaia-to-pixi.py`.
+If you instead completed the Gaia walkthrough in `stellar-distance/` inside your examples checkout, copy the script into that project:
+
+
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-cp "$setup_script" setup-pixi.py
+cp "$setup_script" migrate-gaia-to-pixi.py
 ```
+
+With either starting point, run the migration:
 
 ```sh
 # pragma: testrun full-build
-pixi exec --spec python --spec tomlkit -- python setup-pixi.py
+pixi exec --spec python --spec tomlkit -- python migrate-gaia-to-pixi.py
 ```
 
 While keeping the existing Python requirements and analysis scripts, this script makes the following changes:
@@ -81,10 +92,6 @@ While keeping the existing Python requirements and analysis scripts, this script
 - Updates the reproduction instructions
 
 {{< detail title="The complete pyproject.toml" >}} {{< file-code path="static/examples/gaia-pixi/pyproject.toml" lang="toml" >}} {{< /detail >}}
-
-{{< detail title="Platform settings" >}} The setup includes Linux and Apple Silicon macOS environments.
-The OS minimums in the configuration allow Pixi to select the bundled git-annex wheels; they do not change your operating system.
-GNU coreutils supplies the utilities used by the existing shell script, so that script can remain unchanged. {{< /detail >}}
 
 Run the equivalent workflow:
 
@@ -107,7 +114,7 @@ Save the changes and generated `pixi.lock` with the project.
 # pragma: render hidden
 pixi run git config user.name "Demo User"
 pixi run git config user.email "demo@example.com"
-pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ setup-pixi.py
+pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ migrate-gaia-to-pixi.py
 pixi run git commit -m "build: express the Gaia workflow with Pixi"
 ```
 

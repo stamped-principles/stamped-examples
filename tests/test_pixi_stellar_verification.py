@@ -72,7 +72,7 @@ def test_setup_preserves_project_and_matches_display(tmp_path, monkeypatch):
     for name in ("Makefile", "requirements.txt"):
         (tmp_path / name).write_text("old setup\n")
     monkeypatch.chdir(tmp_path)
-    runpy.run_path(str(root / "static/examples/gaia-pixi/setup-pixi.py"))
+    runpy.run_path(str(root / "static/examples/gaia-pixi/migrate-gaia-to-pixi.py"))
     result = (tmp_path / "pyproject.toml").read_text()
     assert tomlkit.parse(result)["project"] == tomlkit.parse(manifest)["project"]
     assert result == (root / "static/examples/gaia-pixi/pyproject.toml").read_text()

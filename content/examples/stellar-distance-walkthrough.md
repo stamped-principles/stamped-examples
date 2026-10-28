@@ -22,9 +22,11 @@ params:
 # pragma: requires sh git python3 curl make
 # pragma: timeout 600
 # pragma: materialize stellar-distance
+# pragma: source static/examples/gaia-pixi/migrate-gaia-to-pixi.py
 
 set -eux
 PS4='> '
+migration_script="$PWD/static/examples/gaia-pixi/migrate-gaia-to-pixi.py"
 
 # Random temp dir for containment and security (no deterministic paths under /tmp)
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-XXXXXXX")"
@@ -904,3 +906,12 @@ Not every project needs every step, but knowing the spectrum makes it easier to 
 
 [Reusing the Gaia analysis with Pixi and DataLad]({{< ref "examples/pixi-stellar-distance-walkthrough" >}}) starts from this completed project.
 It brings task execution and environment selection into one configuration, then explores what to reuse, rerun, and record when changing the sample or dependencies.
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+# Include the continuation script in the published project for readers who clone it.
+cp "$migration_script" migrate-gaia-to-pixi.py
+git add migrate-gaia-to-pixi.py
+git commit -m "docs: include the optional Pixi migration script"
+```
