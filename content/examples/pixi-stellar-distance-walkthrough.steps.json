@@ -1,6 +1,5 @@
 [
   "build: express the Gaia workflow with Pixi",
-  "[DATALAD RUNCMD] Compute stellar distances",
-  "docs: describe the revised Gaia sample",
-  "[DATALAD RUNCMD] Compute stellar distances"
+  "[DATALAD RUNCMD] Gaia analysis",
+  "[DATALAD RUNCMD] Gaia plotting"
 ]

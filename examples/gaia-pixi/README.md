@@ -12,7 +12,10 @@ cd analysis
 pixi run test
 ```
 
-Continue with the Pixi walkthrough.
+Continue with the Pixi walkthrough to add a numerical-analysis environment (NumPy and SciPy) and a separate plotting environment (Matplotlib).
+The extension propagates random parallax errors into asymmetric distance intervals and plots them against the original estimates and Gaia GSP-Phot.
+The scientific and plotting scripts are in `extension/`; the saved catalog snapshot and acquisition notes are in `data/`.
+The migration copies these into the derived project, where DataLad records the numerical results and the figure as separate tasks.
 `analysis/` has its own Git history, beginning at the pinned Gaia commit.
 The script refuses to overwrite an existing output; use `--output another-analysis` for a fresh run.
 The baseline submodule is never reset or migrated.
