@@ -29,7 +29,7 @@ The existing setup supports these goals, but leaves several things to coordinate
 
 [Pixi](https://pixi.prefix.dev/latest/) brings task execution and environment selection into the same project configuration.
 It builds on conda-forge’s language-agnostic, cross-platform package ecosystem to manage Python interpreters, libraries, and command-line tools together.
-Tasks use TOML alongside the existing Python metadata, and invoking a task prepares the environment specified by the checked-out project.
+The equivalent of targets in the previous Makefile are "tasks". Tasks are specified in the existing Python metadata, and invoking a task prepares the environment specified by the checked-out project.
 This reduces the setup knowledge collaborators must supply themselves and makes changes to the workflow and its environment easier to track together.
 
 Combining Pixi with DataLad's execution records, we can express both how to run the analysis and which inputs, outputs, and environment specifications belong to a run.
@@ -47,7 +47,9 @@ Otherwise, install [Pixi](https://pixi.prefix.dev/latest/installation/) and retr
 # pragma: requires sh git pixi
 # pragma: timeout 900
 # pragma: materialize stellar-distance
+# pragma: source static/examples/gaia-pixi/setup-pixi.py
 set -eu
+setup_script="$PWD/static/examples/gaia-pixi/setup-pixi.py"
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
 ```
 
@@ -59,125 +61,55 @@ pixi exec --spec git -- git clone --single-branch \
 cd stellar-distance
 ```
 
-The existing `pyproject.toml` already declares `requests` and a compatible Python range.
-Keep those declarations and append the following Pixi configuration.
-It replaces the Makefile's workflow and also declares Git, curl, DataLad, and git-annex as project dependencies.
+Download [setup-pixi.py](/examples/gaia-pixi/setup-pixi.py) into the project directory and run it:
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-git config user.name "Demo User"
-git config user.email "demo@example.com"
-# snippet: configuration
-cat >> pyproject.toml <<'TOML'
-
-[tool.pixi.workspace]
-channels = ["conda-forge"]
-platforms = [
-    { platform = "linux-64", glibc = "2.34" },
-    { platform = "osx-arm64", macos = "14.0" },
-]
-
-[tool.pixi.dependencies]
-git = "*"
-curl = "*"
-
-[tool.pixi.pypi-dependencies]
-datalad = "*"
-git-annex = "*"
-
-[tool.pixi.tasks.fetch]
-cmd = "test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv"
-
-[tool.pixi.tasks.compute]
-cmd = "python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
-depends-on = ["fetch"]
-inputs = ["raw/gaia_nearby.csv", "code/compute_distances.py", "pyproject.toml", "pixi.lock"]
-outputs = ["output/distances.csv"]
-
-[tool.pixi.tasks.all]
-depends-on = ["compute"]
-
-[tool.pixi.tasks.clean]
-cmd = "rm -f output/distances.csv"
-
-[tool.pixi.tasks.reference]
-cmd = "sh test/fetch_reference_distances.sh"
-depends-on = ["all"]
-
-[tool.pixi.tasks.test]
-cmd = "python test/verify_distances.py"
-depends-on = ["reference"]
-TOML
-# /snippet
-# Explicit stdin is portable across GNU and BSD paste.
-pixi run python - <<'PY'
-from pathlib import Path
-p = Path("test/fetch_reference_distances.sh")
-p.write_text(p.read_text().replace("paste -sd,)", "paste -sd, -)"))
-PY
+cp "$setup_script" setup-pixi.py
 ```
-
-{{< snippet id="configuration" lang="toml" >}}
-
-Pixi reads the Python requirements directly from `[project]`; we do not repeat them in the Pixi sections.
-In `test/fetch_reference_distances.sh`, also change `paste -sd,)` to `paste -sd, -)` so the inherited query works with both GNU and BSD paste.
-The declared platforms are Linux x86-64 and Apple Silicon macOS.
-The OS minimums allow the bundled git-annex wheels to run: glibc 2.34 on Linux and macOS 14 on Apple Silicon.
-A separate `pixi.toml` is also supported, but keeping this Python project's configuration together makes the relationship easier to inspect.
-See [Pixi's pyproject support](https://pixi.prefix.dev/latest/python/pyproject_toml/).
 
 ```sh
 # pragma: testrun full-build
-pixi install
-rm Makefile requirements.txt
-printf '\n.pixi/\n' >> .gitignore
+pixi exec --spec python --spec tomlkit -- python setup-pixi.py
+```
+
+While keeping the existing Python requirements and analysis scripts, this script makes the following changes:
+
+- Adds the workflow's command-line tools and DataLad to `pyproject.toml`
+- Replaces Make targets with Pixi tasks, including their dependencies and the computation's inputs and outputs
+- Updates the reproduction instructions
+
+{{< detail title="The complete pyproject.toml" >}} {{< file-code path="static/examples/gaia-pixi/pyproject.toml" lang="toml" >}} {{< /detail >}}
+
+{{< detail title="Platform settings" >}} The setup includes Linux and Apple Silicon macOS environments.
+The OS minimums in the configuration allow Pixi to select the bundled git-annex wheels; they do not change your operating system.
+GNU coreutils supplies the utilities used by the existing shell script, so that script can remain unchanged. {{< /detail >}}
+
+Run the equivalent workflow:
+
+```sh
+# pragma: testrun full-build
+pixi run all
 pixi run clean
 pixi run test
 ```
 
-Pixi creates `pixi.lock`, installs the selected tools, and runs the task dependencies before verification.
-We have reproduced the original workflow using the same analysis scripts and saved observations.
-The lockfile records a resolved package selection; the manifest expresses our requirements.
-As with the previous requirements lock, these are different levels of specificity, useful for different purposes.
+- `pixi run all` runs the calculation using the saved observations, as `make` did.
+- `pixi run clean` removes the calculated output, as `make clean` did.
+- `pixi run test` recomputes the missing output, fetches reference distances, and verifies the result, as `make test` did.
+
+`pixi run` prepares the environment automatically.
+Save the changes and generated `pixi.lock` with the project.
 
 ```sh
 # pragma: testrun full-build
 # pragma: render hidden
-# Replace obsolete reproduction instructions while retaining the scientific README.
-pixi run python - <<'PY'
-from pathlib import Path
-p = Path("README.md")
-s = p.read_text().replace("make test", "pixi run test").replace("make clean", "pixi run clean")
-s = s.replace("make\n", "pixi run all\n")
-s = s.replace("pip install -r requirements.txt", "pixi install --locked")
-s += "\n## Pixi continuation\n\nInstall Pixi and run `pixi run --locked test`.\n"
-p.write_text(s)
-PY
-# snippet: reproduce
-cat > test/reproduce_from_scratch.sh <<'SH'
-#!/bin/sh
-set -eu
-source_repo=$(git rev-parse --show-toplevel)
-clone_dir=$(mktemp -d)
-trap 'rm -rf "$clone_dir"' EXIT
-git clone "$source_repo" "$clone_dir/project"
-cd "$clone_dir/project"
-pixi run --locked clean
-pixi run --locked test
-SH
-# /snippet
-git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/
-git commit -m "build: express the Gaia workflow with Pixi"
+pixi run git config user.name "Demo User"
+pixi run git config user.email "demo@example.com"
+pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ setup-pixi.py
+pixi run git commit -m "build: express the Gaia workflow with Pixi"
 ```
-
-Update the README commands to use `pixi run all`, `pixi run test`, and `pixi install --locked`.
-Replace `test/reproduce_from_scratch.sh` with this shorter reproducer, then save the configuration, lock, and updated instructions in Git.
-
-{{< detail title="The fresh-clone reproducer" >}} {{< snippet id="reproduce" lang="sh" >}} {{< /detail >}}
-
-A collaborator can use `pixi run --locked test` to require that the manifest and lock agree.
-The installed `.pixi/` environment is disposable; its specification travels with the project.
 
 {{< step-link step="1" >}}
 

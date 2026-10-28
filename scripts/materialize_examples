@@ -56,7 +56,12 @@ STEP_MAP_NOTES_REF = "refs/notes/materialize-step-map"
 
 def script_hash(code: str) -> str:
     """Return the SHA-256 hex digest of *code*."""
-    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(code.encode("utf-8"))
+    # External setup scripts are part of the example, even when hidden from prose.
+    for source in re.findall(r"^# pragma: source (.+)$", code, re.MULTILINE):
+        digest.update(b"\0" + source.encode("utf-8") + b"\0")
+        digest.update(Path(source).read_bytes())
+    return digest.hexdigest()
 
 
 def branch_name(file_stem: str, testrun_id: str, repo_subdir: str) -> str:
