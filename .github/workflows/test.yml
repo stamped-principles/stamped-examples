@@ -46,6 +46,12 @@ jobs:
       - name: Install Apptainer
         uses: eWaterCycle/setup-apptainer@v2
 
+      - name: Install Pixi for the stellar walkthrough
+        uses: prefix-dev/setup-pixi@v0.11.0
+        with:
+          pixi-version: v0.81.0
+          run-install: false
+
       - name: Run tests
         run: tox
 
