@@ -19,8 +19,8 @@ params:
 #!/bin/sh
 # pragma: testrun full-build
 # pragma: render hidden
-# pragma: requires sh git python3 curl make
-# pragma: timeout 600
+# pragma: requires sh git python3 curl make pixi
+# pragma: timeout 900
 # pragma: materialize stellar-distance
 # pragma: source static/examples/gaia-pixi/migrate-gaia-to-pixi.py
 
@@ -914,4 +914,20 @@ It brings task execution and environment selection into one configuration, then 
 cp "$migration_script" migrate-gaia-to-pixi.py
 git add migrate-gaia-to-pixi.py
 git commit -m "docs: include the optional Pixi migration script"
+
+# Check the continuation against this build, without migrating the published project.
+(
+    source_repo="$PWD"
+    migration_check_dir=$(mktemp -d "${TMPDIR:-/tmp}/gaia-migration-XXXXXX")
+    trap 'rm -rf "$migration_check_dir"' EXIT
+    git clone "$source_repo" "$migration_check_dir/project"
+    cd "$migration_check_dir/project"
+    pixi exec --spec python --spec tomlkit -- python migrate-gaia-to-pixi.py
+    pixi run clean
+    pixi run test
+)
+# The published example still contains the original workflow and requirements.
+test -f Makefile
+test -f requirements.txt
+git diff --exit-code -- pyproject.toml Makefile requirements.txt code/ test/
 ```

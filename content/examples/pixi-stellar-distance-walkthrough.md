@@ -67,10 +67,7 @@ pixi exec --spec git -- git clone --single-branch \
 cd stellar-distance
 ```
 
-The clone includes `migrate-gaia-to-pixi.py`.
-If you instead completed the Gaia walkthrough in `stellar-distance/` inside your examples checkout, copy the script into that project:
-
-
+The clone includes `migrate-gaia-to-pixi.py`, tested against that Gaia project.
 
 ```sh
 # pragma: testrun full-build
@@ -106,7 +103,7 @@ pixi run test
 - `pixi run clean` removes the calculated output, as `make clean` did.
 - `pixi run test` recomputes the missing output, fetches reference distances, and verifies the result, as `make test` did.
 
-`pixi run` prepares the environment automatically.
+`pixi run` prepares the environment automatically and, in addition to these tasks, it can be used to run any of the software in the environment.
 Save the changes and generated `pixi.lock` with the project.
 
 ```sh
