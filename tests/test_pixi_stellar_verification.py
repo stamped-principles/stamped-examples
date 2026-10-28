@@ -21,15 +21,9 @@ import pytest
 def test_reference_coverage(tmp_path, computed, reference, expected_code, expected_message):
     page = (Path(__file__).resolve().parents[1] / "content/examples/"
             "pixi-stellar-distance-walkthrough.md").read_text()
-    original = (Path(__file__).resolve().parents[1] / "content/examples/"
-                "stellar-distance-walkthrough.md").read_text()
-    script = re.search(
-        r"cat > test/verify_distances.py <<'PYEOF'\n(.*?)\nPYEOF", original, re.S
-    ).group(1)
-    fetch = re.search(
-        r"cat > test/fetch_reference_distances.sh <<'TESTSH'\n(.*?)\nTESTSH",
-        original, re.S
-    ).group(1)
+    baseline = Path(__file__).resolve().parents[1] / "examples/gaia-pixi/gaia"
+    script = (baseline / "test/verify_distances.py").read_text()
+    fetch = (baseline / "test/fetch_reference_distances.sh").read_text()
     patch = re.search(r"# snippet: reference-patch\n(.*?)\n# /snippet", page, re.S).group(1)
     (tmp_path / "output").mkdir()
     (tmp_path / "test").mkdir()
@@ -54,15 +48,12 @@ def test_reference_coverage(tmp_path, computed, reference, expected_code, expect
 
 
 def test_setup_preserves_project_and_matches_display(tmp_path, monkeypatch):
-    """Keep the downloadable setup and displayed complete manifest in agreement."""
+    """Keep the migration and displayed complete manifest in agreement."""
     import runpy
     import tomlkit
 
     root = Path(__file__).resolve().parents[1]
-    original = (root / "content/examples/stellar-distance-walkthrough.md").read_text()
-    manifest = re.search(
-        r"cat > pyproject.toml <<'TOML'\n(.*?)\nTOML", original, re.S
-    ).group(1) + "\n"
+    manifest = (root / "examples/gaia-pixi/gaia/pyproject.toml").read_text()
     (tmp_path / "pyproject.toml").write_text(manifest)
     (tmp_path / ".gitignore").write_text("test/reference_distances.csv\n")
     (tmp_path / "README.md").write_text("    make\n    make test\n")
@@ -72,10 +63,37 @@ def test_setup_preserves_project_and_matches_display(tmp_path, monkeypatch):
     for name in ("Makefile", "requirements.txt"):
         (tmp_path / name).write_text("old setup\n")
     monkeypatch.chdir(tmp_path)
-    runpy.run_path(str(root / "static/examples/gaia-pixi/migrate-gaia-to-pixi.py"))
+    runpy.run_path(str(root / "examples/gaia-pixi/migrate-gaia-to-pixi.py"))["migrate"]()
     result = (tmp_path / "pyproject.toml").read_text()
     assert tomlkit.parse(result)["project"] == tomlkit.parse(manifest)["project"]
-    assert result == (root / "static/examples/gaia-pixi/pyproject.toml").read_text()
+    assert result == (root / "examples/gaia-pixi/pyproject.expected.toml").read_text()
     assert fetch.read_text() == "ids=$(cat sample.csv | paste -sd,)\n"
     assert not (tmp_path / "Makefile").exists()
     assert not (tmp_path / "requirements.txt").exists()
+
+
+def test_prepare_preserves_baseline_and_records_provenance(tmp_path):
+    import hashlib
+    import json
+    import runpy
+
+    root = Path(__file__).resolve().parents[1]
+    bundle = root / "examples/gaia-pixi"
+    script = bundle / "migrate-gaia-to-pixi.py"
+    baseline = bundle / "gaia"
+    output = tmp_path / "analysis"
+    before = subprocess.check_output(["git", "-C", str(baseline), "rev-parse", "HEAD"], text=True).strip()
+    prepare = runpy.run_path(str(script))["prepare"]
+    prepare(baseline, output)
+    assert subprocess.check_output(
+        ["git", "-C", str(output), "rev-parse", "HEAD"], text=True
+    ).strip() == before
+    provenance = json.loads((output / "pixi-source.json").read_text())
+    assert provenance["gaia_commit"] == before
+    assert provenance["migration_sha256"] == hashlib.sha256(script.read_bytes()).hexdigest()
+    assert (output / script.name).read_bytes() == script.read_bytes()
+    assert (baseline / "Makefile").is_file()
+    assert not (output / "Makefile").exists()
+    assert not subprocess.check_output(["git", "-C", str(baseline), "status", "--porcelain"])
+    with pytest.raises(SystemExit, match="already exists"):
+        prepare(baseline, output)

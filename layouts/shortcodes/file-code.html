@@ -1,0 +1,2 @@
+{{- $code := readFile (.Get "path") -}}
+{{- highlight $code (.Get "lang" | default "text") "" -}}

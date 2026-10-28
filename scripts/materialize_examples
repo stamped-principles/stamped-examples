@@ -61,6 +61,19 @@ def script_hash(code: str) -> str:
     for source in re.findall(r"^# pragma: source (.+)$", code, re.MULTILINE):
         digest.update(b"\0" + source.encode("utf-8") + b"\0")
         digest.update(Path(source).read_bytes())
+    for source in re.findall(r"^# pragma: submodule (.+)$", code, re.MULTILINE):
+        if (Path(source) / ".git").exists():
+            revision = subprocess.check_output(
+                ["git", "-C", source, "rev-parse", "HEAD"], text=True,
+            ).strip()
+        else:
+            entry = subprocess.check_output(
+                ["git", "ls-files", "--stage", "--", source], text=True,
+            ).split()
+            if len(entry) < 2 or entry[0] != "160000":
+                raise ValueError(f"Expected a pinned submodule: {source}")
+            revision = entry[1]
+        digest.update(b"\0" + source.encode() + b"\0" + revision.encode())
     return digest.hexdigest()
 
 

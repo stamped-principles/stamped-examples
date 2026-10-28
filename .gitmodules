@@ -5,3 +5,7 @@
     # https://github.com/jpanther/congo/pull/1156
 	url = https://github.com/yarikoptic/congo.git
 	branch = stable
+[submodule "examples/gaia-pixi/gaia"]
+	path = examples/gaia-pixi/gaia
+	url = https://github.com/stamped-principles/stamped-examples.git
+	branch = examples/stellar-distance-walkthrough/full-build/stellar-distance

@@ -26,8 +26,8 @@ jobs:
       - name: Check REUSE compliance
         uses: fsfe/reuse-action@v5
 
-      - name: Fetch theme submodule
-        run: git submodule update --init themes/congo
+      - name: Fetch theme and pinned Gaia input
+        run: git submodule update --init themes/congo examples/gaia-pixi/gaia
 
       - uses: actions/setup-python@v5
         with:

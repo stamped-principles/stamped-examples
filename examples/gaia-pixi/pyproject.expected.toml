@@ -1,0 +1,50 @@
+[project]
+name = "stellar-distance"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+
+[[tool.pixi.workspace.platforms]]
+platform = "linux-64"
+glibc = "2.34"
+
+[[tool.pixi.workspace.platforms]]
+platform = "osx-arm64"
+macos = "14.0"
+
+[tool.pixi.dependencies]
+git = "*"
+curl = "*"
+coreutils = "*"
+
+[tool.pixi.pypi-dependencies]
+datalad = "*"
+git-annex = "*"
+
+[tool.pixi.tasks.fetch]
+cmd = "test -f raw/gaia_nearby.csv || python code/fetch_data.py raw/gaia_nearby.csv"
+
+[tool.pixi.tasks.compute]
+cmd = "python code/compute_distances.py raw/gaia_nearby.csv output/distances.csv"
+depends-on = ["fetch"]
+inputs = ["raw/gaia_nearby.csv", "code/compute_distances.py", "pyproject.toml", "pixi.lock"]
+outputs = ["output/distances.csv"]
+
+[tool.pixi.tasks.all]
+depends-on = ["compute"]
+
+[tool.pixi.tasks.clean]
+cmd = "rm -f output/distances.csv"
+
+[tool.pixi.tasks.reference]
+cmd = "sh test/fetch_reference_distances.sh"
+depends-on = ["all"]
+
+[tool.pixi.tasks.test]
+cmd = "python test/verify_distances.py"
+depends-on = ["reference"]

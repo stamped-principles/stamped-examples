@@ -38,13 +38,16 @@ STAMPED gives us a vocabulary for deciding how much of that context to retain.
 
 ## 1. Migrate to Pixi
 
-If you completed the Gaia walkthrough, you can continue in that directory but copy a setup script for migrating to using pixi for this analysis:
+Install [Pixi](https://pixi.prefix.dev/latest/installation/) and clone the example sources, including the pinned Gaia submodule:
 
 ```sh
-cp ../static/examples/gaia-pixi/migrate-gaia-to-pixi.py .
+pixi exec --spec git -- git clone --recurse-submodules \
+  https://github.com/stamped-principles/stamped-examples.git
+cd stamped-examples/examples/gaia-pixi
 ```
 
-Starting afresh,  make sure to install [Pixi](https://pixi.prefix.dev/latest/installation/) and retrieve the completed example (`pixi exec` supplies Git in a temporary environment, without requiring a separate Git installation.):
+This directory contains the migration script and `gaia/`, a submodule recording an exact commit of the completed Gaia analysis.
+It remains fixed when the upstream Gaia output branch advances.
 
 ```sh
 # pragma: testrun full-build
@@ -52,35 +55,28 @@ Starting afresh,  make sure to install [Pixi](https://pixi.prefix.dev/latest/ins
 #!/bin/sh
 # pragma: requires sh git pixi
 # pragma: timeout 900
-# pragma: materialize stellar-distance
-# pragma: source static/examples/gaia-pixi/migrate-gaia-to-pixi.py
+# pragma: materialize analysis
+# pragma: source examples/gaia-pixi/migrate-gaia-to-pixi.py
+# pragma: source examples/gaia-pixi/pyproject.expected.toml
+# pragma: submodule examples/gaia-pixi/gaia
 set -eu
-setup_script="$PWD/static/examples/gaia-pixi/migrate-gaia-to-pixi.py"
+source_bundle="$PWD/examples/gaia-pixi"
+test -e "$source_bundle/gaia/.git" || git submodule update --init -- examples/gaia-pixi/gaia
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
+pixi exec --spec git --spec python --spec tomlkit -- python "$source_bundle/migrate-gaia-to-pixi.py"
+cd analysis
 ```
+
+Create and migrate a separate analysis repository:
 
 ```sh
-# pragma: testrun full-build
-pixi exec --spec git -- git clone --single-branch \
-  --branch examples/stellar-distance-walkthrough/full-build/stellar-distance \
-  https://github.com/stamped-principles/stamped-examples.git stellar-distance
-cd stellar-distance
+pixi exec --spec git --spec python --spec tomlkit -- python migrate-gaia-to-pixi.py
+cd analysis
 ```
 
-The clone includes `migrate-gaia-to-pixi.py`, tested against that Gaia project.
-
-```sh
-# pragma: testrun full-build
-# pragma: render hidden
-cp "$setup_script" migrate-gaia-to-pixi.py
-```
-
-With either starting point, run the migration:
-
-```sh
-# pragma: testrun full-build
-pixi exec --spec python --spec tomlkit -- python migrate-gaia-to-pixi.py
-```
+The script leaves `gaia/` untouched and creates `analysis/` with its Git history intact.
+The subsequent commits and DataLad records belong to this derived repository.
+`pixi-source.json` records the source revision, Gaia revision, and migration-script hash used to create it.
 
 While keeping the existing Python requirements and analysis scripts, this script makes the following changes:
 
@@ -88,7 +84,7 @@ While keeping the existing Python requirements and analysis scripts, this script
 - Replaces Make targets with Pixi tasks, including their dependencies and the computation's inputs and outputs
 - Updates the reproduction instructions
 
-{{< detail title="The complete pyproject.toml" >}} {{< file-code path="static/examples/gaia-pixi/pyproject.toml" lang="toml" >}} {{< /detail >}}
+{{< detail title="The complete pyproject.toml" >}} {{< file-code path="examples/gaia-pixi/pyproject.expected.toml" lang="toml" >}} {{< /detail >}}
 
 Run the equivalent workflow:
 
@@ -111,7 +107,7 @@ Save the changes and generated `pixi.lock` with the project.
 # pragma: render hidden
 pixi run git config user.name "Demo User"
 pixi run git config user.email "demo@example.com"
-pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ migrate-gaia-to-pixi.py
+pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ migrate-gaia-to-pixi.py pixi-source.json
 pixi run git commit -m "build: express the Gaia workflow with Pixi"
 ```
 
