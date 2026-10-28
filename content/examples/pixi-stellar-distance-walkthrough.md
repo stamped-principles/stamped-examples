@@ -16,22 +16,29 @@ params:
 state: wip
 ---
 
-The [Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}) established a documented, automated, and verifiable analysis of nearby stars.
-We now reuse that completed project to explore how its execution environment and workflow can evolve together.
-The scripts, saved observations, and scientific comparison remain our starting point.
+The [Gaia walkthrough]({{< ref "examples/stellar-distance-walkthrough" >}}) showed how small, practical changes turn a working analysis into a research object that embodies the STAMPED principles: its data and code are organized and tracked, its workflow is executable, and its results can be verified and shared.
+We now build on that foundation to explore how those properties support reuse as the data, tasks, and execution environment change.
 
-Suppose a collaborator wants to repeat the calculation, use a different sample, or try another Python version.
-The Makefile already describes the workflow, and the requirements lock records Python packages.
-However, selecting a Python interpreter, preparing its environment, installing command-line tools, and invoking Make are separate instructions to coordinate.
-We can automate those instructions too; here we explore a tool that brings **task execution and environment selection into the same project configuration**.
+Suppose a collaborator wants to repeat the calculation, use a different sample, or revisit an earlier result.
+The existing setup supports these goals, but leaves several things to coordinate:
 
-[Pixi](https://pixi.prefix.dev/latest/) manages environments containing Python packages and tools from other ecosystems, and runs named tasks in those environments.
-Combined with DataLad's execution records, it lets us express both how to run the analysis and which inputs, outputs, and environment specifications belong to a run.
+- Learning the workflow: `Make` and it's associated Makefile introduces its own syntax and conventions alongside Python, shell commands, and dependency files.
+- Installing all the tools: The requirements lock records Python packages, but leaves the Python interpreter and tools such as Git and curl outside that specification.
+- Working across platforms: The Makefile and shell commands assume a Unix-like environment; Windows users need additional setup.
+- Revisiting earlier work: Checking out an older commit restores its code and dependency specification, but updating the active environment remains a separate, manual step.
+
+[Pixi](https://pixi.prefix.dev/latest/) brings task execution and environment selection into the same project configuration.
+It builds on conda-forge’s language-agnostic, cross-platform package ecosystem to manage Python interpreters, libraries, and command-line tools together.
+Tasks use TOML alongside the existing Python metadata, and invoking a task prepares the environment specified by the checked-out project.
+This reduces the setup knowledge collaborators must supply themselves and makes changes to the workflow and its environment easier to track together.
+
+Combining Pixi with DataLad's execution records, we can express both how to run the analysis and which inputs, outputs, and environment specifications belong to a run.
 STAMPED gives us a vocabulary for deciding how much of that context to retain.
 
 ## 1. Reuse the completed project
 
-Install [Pixi](https://pixi.prefix.dev/latest/installation/) and Git, then clone the output of the previous walkthrough:
+If you completed the Gaia walkthrough, continue in that project.
+Otherwise, install [Pixi](https://pixi.prefix.dev/latest/installation/) and retrieve the completed example (`pixi exec` supplies Git in a temporary environment, without requiring a separate Git installation.):
 
 ```sh
 # pragma: testrun full-build
@@ -46,14 +53,11 @@ cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
 
 ```sh
 # pragma: testrun full-build
-git clone --single-branch \
+pixi exec --spec git -- git clone --single-branch \
   --branch examples/stellar-distance-walkthrough/full-build/stellar-distance \
   https://github.com/stamped-principles/stamped-examples.git stellar-distance
 cd stellar-distance
 ```
-
-This is the published research object produced by Gaia's executable example, including its history.
-If you completed that walkthrough locally, you can continue in your existing project instead.
 
 The existing `pyproject.toml` already declares `requests` and a compatible Python range.
 Keep those declarations and append the following Pixi configuration.
