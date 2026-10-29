@@ -48,7 +48,7 @@ GSP-Phot also uses parallax, so the comparison describes agreement between relat
 - `.datalad/runinfo/` and Git history: execution records linking artifacts to inputs, scripts, and environment specifications.
 - `source.json`: preparation provenance and exact original Gaia revision.
 
-Use `pixi run git log` to locate run commits and `pixi run datalad rerun --report COMMIT` to inspect a record.
+Use `pixi run git log` to locate run commits and `pixi run datalad --output-format json_pp rerun --report COMMIT` to inspect a record.
 Use `pixi run datalad rerun COMMIT` to replay its explicit command with the current checkout.
 For a historical computation, first restore the desired project revision and initialize its pinned subdatasets in a separate clone.
 Report the project commit together with the table or figure used in your scientific report.

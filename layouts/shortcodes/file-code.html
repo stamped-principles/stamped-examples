@@ -1,2 +1,17 @@
 {{- $code := readFile (.Get "path") -}}
+{{- with .Get "section" -}}
+  {{- $header := printf "[%s]" . -}}
+  {{- $active := false -}}
+  {{- $lines := slice -}}
+  {{- range split $code "\n" -}}
+    {{- if hasPrefix . "[" -}}
+      {{- $active = eq . $header -}}
+    {{- end -}}
+    {{- if $active -}}
+      {{- $lines = $lines | append . -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $lines -}}{{- errorf "Missing section %s in %s" . ($.Get "path") -}}{{- end -}}
+  {{- $code = strings.TrimSpace (delimit $lines "\n") -}}
+{{- end -}}
 {{- highlight $code (.Get "lang" | default "text") "" -}}

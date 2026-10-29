@@ -1,5 +1,7 @@
 [
-  "build: express the Gaia workflow with Pixi",
-  "[DATALAD RUNCMD] Gaia analysis",
-  "[DATALAD RUNCMD] Gaia plotting"
+  "build: prepare Gaia extension",
+  "feat: reproduce the Gaia baseline",
+  "feat: acquire Gaia uncertainty measurements",
+  "feat: estimate Gaia distance intervals",
+  "feat: plot Gaia distance intervals"
 ]
