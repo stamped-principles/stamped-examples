@@ -34,15 +34,16 @@ Install [Pixi](https://pixi.prefix.dev/latest/installation/) and clone the analy
 
 {{< gaia-clone >}}
 
-The log shows how the analysis was built, from project preparation through data acquisition, calculation, and plotting.
-We check out the preparation commit on a new local branch, `my-analysis`, to start before those computations.
+The log shows how the analysis we will work through is built, from project preparation through data acquisition, calculation, and plotting.
+We check out a fresh local branch, `my-analysis`, to start prior to the execution of those computations.
 The scripts and software configuration are ready; our task executions will now create the results and their records.
 The completed analysis remains in the original branch, and the checkpoint links below show its successive stages.
 
 The earlier Gaia research object lives at `inputs/gaia/` as a Git submodule.
 It carries the original code, observations, results, and history, and our project records the exact revision used.
-Our additional measurements and results belong to the surrounding extension dataset, so another researcher can reuse either the original analysis or this extension.
-This makes STAMPED Modularity concrete: an existing research object becomes a versioned component of a new analysis, carrying its provenance with it.
+We record our additional measurements and results in the extension dataset, alongside the original research object.
+Another researcher can reuse either the original analysis or this extension, with the history needed to understand each.
+This is STAMPED Modularity: we build a new analysis from an existing research object while preserving its provenance.
 
 ```text
 inputs/gaia/       original Gaia research object, pinned to a commit
@@ -121,8 +122,8 @@ Gaia reports a standard error for each parallax measurement.
 We will use those errors to construct parallax intervals and transform their endpoints into distance bounds, showing the precision of the original estimates under a stated measurement model.
 We also retrieve GSP-Phot's reported distance intervals for comparison.
 
-The acquisition script selects the same stars using the original source IDs and queries Gaia DR3 for these additional fields.
-Its Pixi task exposes the complete DataLad command:
+The acquisition script uses the original source IDs to query Gaia DR3 for these additional measurements for the same stars.
+The Pixi task shows the command that DataLad will record, together with its inputs and outputs:
 
 {{< file-code path="examples/gaia-pixi/pyproject.toml" section="tool.pixi.tasks.acquire" lang="toml" >}}
 
@@ -258,8 +259,8 @@ pixi run datalad save -m "style: clarify figure labels" code/plot_distances.py
 pixi run figure
 ```
 
-The new figure record identifies both the revised plotting code and the saved scientific results it consumes.
-This supports efficient figure revision while keeping its relationship to the numerical analysis visible.
+The new figure record identifies both the revised plotting code and the saved numerical results used to create the figure.
+We can revise the presentation without repeating the numerical analysis, and trace each figure to the results it shows.
 The scripts remain ordinary Python files that collaborators can read and adapt.
 
 `figure` belongs to the plotting environment, so the task name is enough to select it.
@@ -271,7 +272,7 @@ pixi run --environment plotting python code/plot_distances.py \
 ```
 
 Here we choose the environment explicitly and pass the script a different output name.
-The task packages a routine procedure into one command; direct execution lets us use the same environment for work beyond that procedure.
+The task gives us a short command for a routine procedure; running the script directly lets us adapt that procedure while using the same environment.
 To retain an exploratory run as part of the research object's provenance, wrap its concrete command in `datalad run`, following the input and output declarations shown in the figure task.
 
 Using Pixi and DataLad together gives us flexibility to explore an analysis with different environments, code, or data while retaining a record of what changed.

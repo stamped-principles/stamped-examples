@@ -95,8 +95,8 @@ The step map identifies preparation, baseline, acquisition, estimation, and figu
 The completed branch includes saved measurements and outputs; earlier checkpoints show their creation.
 Publish that branch and its step-map notes with the source when releasing the walkthrough, using the repository's existing materialization workflow.
 Until published, new checkpoint links and the revised prepared project are local build artifacts.
-For local previews, set `HUGO_PARAMS_GAIAANALYSISURL` to a local clone of the completed analysis.
-The `gaia-clone` shortcode then displays a working local clone command; published builds use the public `analysis` branch by default.
+Local previews use the same public clone command and published preparation commit as the website.
+The generated history uses the demo user identity; implementation commit attribution is not added to the demo user's commits.
 
 Relevant checks from the repository root:
 
