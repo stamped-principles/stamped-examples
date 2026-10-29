@@ -18,10 +18,15 @@ params:
 The [previous Gaia analysis]({{< ref "examples/stellar-distance-walkthrough" >}}) calculated distances for 100 nearby stars from their parallaxes and compared them with Gaia DR3's GSP-Phot estimates.
 Those point estimates raise a scientific question: **how much precision do the distances imply, and how large are the differences between the estimates relative to their uncertainty?** Here we extend that work with measurement uncertainties and a figure that makes the comparison visible.
 
-We have adapted the workflow to [Pixi](https://pixi.prefix.dev/latest/), which keeps the interpreter, command-line tools, libraries, and executable tasks in one project configuration.
-Pixi prepares the software environment for the task we choose to run.
-DataLad records the actual scientific command and connects its outputs to the data, code, and environment specifications used to produce them.
-Together, these tools help us extend the earlier STAMPED research object into one that supports reporting, inspection, and further reuse.
+Extending an analysis also means extending its software environment: we need new numerical libraries for the uncertainty calculation and plotting tools for the figure.
+The previous example specified Python packages and used Make to organize commands, while setting up the interpreter and command-line tools remained separate steps.
+[Pixi](https://pixi.prefix.dev/latest/) brings these pieces together: it manages environments containing Python, libraries, and tools such as Git and DataLad, and associates executable tasks with those environments.
+Running a task prepares its environment and executes the command, making the same workflow convenient to use on another machine or after returning to an earlier project revision.
+
+This fits naturally with the DataLad workflow we already have.
+A recorded command can select its Pixi environment, with the environment specification and lockfile tracked alongside its code and data.
+We can then repeat a calculation, revise a figure, or explore a change in dependencies while keeping those choices connected to the results.
+Here we use that combination to build on the original research object's STAMPED properties, making a scientific extension easier to run, examine, and reuse.
 
 ## Reuse the original analysis
 
@@ -34,15 +39,10 @@ pixi exec --spec git -- git clone --recurse-submodules \
 cd gaia-extension
 ```
 
-The completed project includes its scripts, locked software specification, acquired measurements, tables, and figure.
-Configure your Git name and email before recording your own runs.
-The manifest targets Linux x86-64 and macOS ARM64; see the project README for system requirements.
-The complete workflow and fresh-clone checks were run on macOS ARM64; the Linux environment has been resolved in the lockfile.
-
 The earlier Gaia research object lives at `inputs/gaia/` as a Git submodule.
 It carries the original code, observations, results, and history, and our project records the exact revision used.
 Our additional measurements and results belong to the surrounding extension dataset, so another researcher can reuse either the original analysis or this extension.
-This follows the [YODA pattern of composing analyses from reusable datasets](https://handbook.datalad.org/en/latest/basics/101-127-yoda.html).
+This makes STAMPED Modularity concrete: an existing research object becomes a versioned component of a new analysis, carrying its provenance with it.
 
 ```text
 inputs/gaia/       original Gaia research object, pinned to a commit
@@ -88,8 +88,15 @@ pixi run git commit -m "build: prepare Gaia extension"
 
 ```sh
 # pragma: testrun full-build
-pixi run --locked baseline
+pixi run baseline
 ```
+
+{{< detail title="Using the lockfile when reproducing a result" >}} Pixi normally uses `pixi.lock` to prepare the environment; if the dependency declarations have changed, it may update the lockfile.
+Adding `--locked`, as in `pixi run --locked baseline`, requires the existing lockfile to agree with the manifest and fails if it needs updating.
+This is useful for reproduction checks and automated runs.
+The DataLad commands in our task definitions retain `--locked` so replay uses a consistent environment specification.
+When intentionally changing dependencies, update and save the manifest and lockfile before recording the new analysis.
+See the [Pixi run options](https://pixi.prefix.dev/latest/reference/cli/pixi/run/). {{< /detail >}}
 
 The task executes the original `inputs/gaia/code/compute_distances.py` against its saved observations and writes `output/distances.csv` in our project.
 Our verification step checks that the reproduced table agrees exactly with the earlier result.
@@ -117,14 +124,14 @@ Its Pixi task exposes the complete DataLad command:
 
 ```sh
 # pragma: testrun full-build
-pixi run --locked acquire
+pixi run acquire
 ```
 
 This queries the archive and records its response in `raw/gaia_uncertainties.csv`.
 The run record identifies the original sample, fetch script, manifest, and lockfile as inputs, and the response CSV as the output.
 Opening the record shows the Python command and its arguments, including the selected Pixi environment.
 
-The completed project already contains the response used for the reported results.
+The repository we cloned already contains the Gaia response used for the reported results.
 Run `acquire` to make a new acquisition; to reproduce the reported analysis, continue with that saved response.
 Recording and sharing the acquired measurements lets collaborators inspect the data underlying a result and choose explicitly when to request a new snapshot.
 
@@ -141,9 +148,12 @@ The `analysis` environment declares those libraries, while our short analysis sc
 
 ```sh
 # pragma: testrun full-build
-pixi run --environment analysis --locked estimate
-pixi run --environment analysis --locked verify
+pixi run estimate
+pixi run verify
 ```
+
+The `estimate` and `verify` tasks belong to the `analysis` environment, so Pixi selects it from the task name.
+That association makes the project's procedures easy to invoke and gives STAMPED Actionability a practical form.
 
 `output/distance_intervals.csv` contains the original point estimates, propagated distance bounds, and available GSP-Phot estimates and intervals.
 `output/distance_summary.json` records sample coverage and identifies the largest reference differences by source ID.
@@ -182,30 +192,41 @@ Matplotlib produces the figure from the saved interval table:
 
 ```sh
 # pragma: testrun full-build
-pixi run --environment plotting --locked figure
+pixi run figure
 ```
 
 ![Comparison of original inverse-parallax distances, propagated uncertainty intervals, and Gaia GSP-Phot estimates.](/images/examples/gaia-pixi-distance-comparison.png)
 
-Gaia supplies GSP-Phot comparisons for 48 of the 100 stars in this sample.
+{{< detail title="Reading the stellar-distance comparison" >}} Gaia supplies GSP-Phot comparisons for 48 of the 100 stars in this sample.
 The largest absolute difference from the inverse-parallax estimate is about 0.27%.
 The top-left panel shows these differences; the uncertainty intervals below put their size in context.
 The top-right panel shows how interval asymmetry increases with fractional parallax error.
 The lower panel places the largest reference differences alongside both methods' intervals, retaining full source IDs so each comparison can be traced back to its measurements.
 
+For this nearby-star sample, the point estimates are close in relative terms, but the intervals reveal how that agreement compares with each estimate's precision.
+The GSP-Phot intervals can be substantially wider than the propagated parallax intervals because the methods use different assumptions and information.
+Their shared use of parallax also matters when interpreting agreement: neither set of estimates provides independent ground truth for the other. {{< /detail >}}
+
 The figure is saved as PNG and SVG in `figures/`.
 Its DataLad record links it to the interval table, plotting script, and environment specifications.
 That connection makes the reported figure an inspectable product of the research object.
 
-{{< detail title="Shared tools and selective environments in Pixi" >}} The environments share the common project tools and belong to an explicit solve group.
-Pixi resolves shared packages to compatible common versions while installing each environment's selected dependencies.
-Cached packages can be reused when preparing another environment.
-This combines selective installation with shared infrastructure; see [Pixi's environment configuration](https://pixi.prefix.dev/latest/reference/pixi_manifest/#the-environments-table).
+{{< detail title="What the environments share" >}} All three environments include Python, Requests, Git, DataLad, and git-annex from the project's base declarations.
+These are the shared tools used to acquire data and record computations.
+Here are those declarations:
+
+{{< file-code path="examples/gaia-pixi/pyproject.toml" section="project" lang="toml" >}} {{< file-code path="examples/gaia-pixi/pyproject.toml" section="tool.pixi.dependencies" lang="toml" >}} {{< file-code path="examples/gaia-pixi/pyproject.toml" section="tool.pixi.pypi-dependencies" lang="toml" >}}
+
+The `analysis` environment adds NumPy and SciPy; `plotting` adds NumPy and Matplotlib.
+The empty `features = []` list for `default` means it adds no named features to that shared base.
+Pixi includes the default feature in each of these environments implicitly.
 
 {{< file-code path="examples/gaia-pixi/pyproject.toml" section="tool.pixi.environments" lang="toml" >}}
 
-Changes to shared dependencies can affect more than one environment, so inspect the lockfile diff when updating packages.
-For a figure-only revision, keeping the saved interval table fixed makes the scientific input to that revision explicit. {{< /detail >}}
+Their common solve group aligns shared package versions, and cached packages can be reused when preparing another environment.
+This lets us share the tools used throughout the project while installing the additional libraries needed for each step.
+Changes to shared packages can affect multiple environments, so review the lockfile when updating dependencies.
+See [Pixi's environment configuration](https://pixi.prefix.dev/latest/reference/pixi_manifest/#the-environments-table). {{< /detail >}}
 
 {{< step-link step="5" text="Completed research object with the reported figure" >}}
 
@@ -216,14 +237,27 @@ They edit `code/plot_distances.py`, save that change, and run the figure task ag
 
 ```sh
 pixi run datalad save -m "style: clarify figure labels" code/plot_distances.py
-pixi run --environment plotting --locked figure
+pixi run figure
 ```
 
 The new figure record identifies both the revised plotting code and the saved scientific results it consumes.
 This supports efficient figure revision while keeping its relationship to the numerical analysis visible.
 The scripts remain ordinary Python files that collaborators can read and adapt.
 
-To inspect the most recent figure record:
+`figure` belongs to the plotting environment, so the task name is enough to select it.
+We can also run a command directly when exploring a different output or adapting a step to a new question:
+
+```sh
+pixi run --environment plotting python code/plot_distances.py \
+  output/distance_intervals.csv figures/exploratory_comparison
+```
+
+Here we choose the environment explicitly and pass the script a different output name.
+The task packages a routine procedure into one command; direct execution lets us use the same environment for work beyond that procedure.
+To retain an exploratory run as part of the research object's provenance, wrap its concrete command in `datalad run`, following the input and output declarations shown in the figure task.
+
+We can examine how the figure was produced using DataLad's report mode.
+Although the subcommand is named `rerun`, `--report` displays the saved execution record without running the computation:
 
 ```sh
 # pragma: testrun full-build
@@ -232,11 +266,13 @@ pixi run datalad --output-format json_pp rerun --report HEAD
 
 The recorded command names `python code/plot_distances.py`, its input table and destination, and the locked `plotting` environment.
 Pixi task names provide convenient entry points; the DataLad history retains the concrete commands and file relationships needed to understand a result.
-[Choosing what stays fixed during replay]({{< ref "guides/choosing-what-changes" >}}) explains replay with current inputs and recovery of historical computations.
+Using Pixi and DataLad together gives us flexibility to explore an analysis with different environments, code, or data while retaining a record of what changed.
+For example, we could test a newer numerical library against the same observations, or apply the same method to an updated Gaia sample.
+[This guide]({{< ref "guides/choosing-what-changes" >}}) explores how to choose what stays fixed during these experiments and how to return to a historical computation.
 
-For a scientific report, share the completed project revision together with the figure or numerical table used.
-The project includes the baseline reference, acquired measurements, executable methods, software specification, and recorded results.
-A collaborator can check numerical reproduction in a fresh clone and then build the figure from those results.
+We can now see the value of working with a STAMPED research object: the original analysis supported this extension, and the work we have produced can itself be reused or extended.
+Pixi makes the software and procedures convenient to run; DataLad keeps the resulting computations connected to their inputs and methods.
+Guided by the STAMPED principles, that combination helps us improve rigor, efficiency, and reproducibility as scientific analyses evolve.
 
 | STAMPED property | Evidence in this research object |
 | --- | --- |
@@ -261,12 +297,12 @@ git clone --recurse-submodules "$source_repo" "$clone_dir/project"
     git config user.name "Demo User"
     git config user.email "demo@example.com"
     rm output/distances.csv output/distance_intervals.csv output/distance_summary.json
-    pixi run --locked baseline
-    pixi run --environment analysis --locked estimate
-    pixi run --environment analysis --locked verify
+    pixi run baseline
+    pixi run estimate
+    pixi run verify
     test ! -d .pixi/envs/plotting
     cmp "$source_repo/output/distance_intervals.csv" output/distance_intervals.csv
-    pixi run --environment plotting --locked figure
+    pixi run figure
     cmp "$source_repo/figures/distance_comparison.png" figures/distance_comparison.png
     cmp "$source_repo/figures/distance_comparison.svg" figures/distance_comparison.svg
     pixi run datalad rerun HEAD
@@ -280,7 +316,7 @@ git clone --recurse-submodules "$source_repo" "$clone_dir/plotting-only"
     git config user.email "demo@example.com"
     pixi run --environment plotting --locked python -c "from pathlib import Path; p = Path('code/plot_distances.py'); p.write_text(p.read_text().replace('From a point estimate to an uncertainty-aware comparison', 'Gaia distances with measurement uncertainty'))"
     pixi run --environment plotting --locked datalad save -m "style: clarify figure title" code/plot_distances.py
-    pixi run --environment plotting --locked figure
+    pixi run figure
     test ! -d .pixi/envs/analysis
     test ! -d .pixi/envs/default
     cmp "$source_repo/output/distance_intervals.csv" output/distance_intervals.csv

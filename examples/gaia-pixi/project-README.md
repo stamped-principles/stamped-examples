@@ -13,10 +13,10 @@ pixi exec --spec git -- git submodule update --init --recursive
 Reproduce the original distances and the extension using the saved measurements:
 
 ```sh
-pixi run --locked baseline
-pixi run --environment analysis --locked estimate
-pixi run --environment analysis --locked verify
-pixi run --environment plotting --locked figure
+pixi run baseline
+pixi run estimate
+pixi run verify
+pixi run figure
 ```
 
 Pixi prepares the environment for each step from `pyproject.toml` and `pixi.lock`.
@@ -27,7 +27,7 @@ The small tables and figures are tracked directly in Git; this example uses Data
 To query Gaia DR3 again for the original source IDs and record the response:
 
 ```sh
-pixi run --locked acquire
+pixi run acquire
 ```
 
 Run this acquisition before estimation when using the prepared checkpoint, which predates the saved response.
