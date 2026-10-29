@@ -282,7 +282,8 @@ For example, we could test a newer numerical library against the same observatio
 
 We can now see the value of working with a STAMPED research object: the original analysis supported this extension, and the work we have produced can itself be reused or extended.
 Pixi makes the software and procedures convenient to run; DataLad keeps the resulting computations connected to their inputs and methods.
-Guided by the STAMPED principles, that combination helps us improve rigor, efficiency, and reproducibility as scientific analyses evolve.
+We want scientific work to be rigorous, transparent, reproducible, and efficient—and easier for others to build on.
+STAMPED provides a lens for examining how our tools and practices support these aspirations.
 
 | STAMPED property | Evidence in this research object |
 | --- | --- |
