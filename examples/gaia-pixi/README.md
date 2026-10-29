@@ -65,6 +65,8 @@ The original reference-comparison scripts remain inspectable in the pinned input
 Pixi tasks expose their complete `datalad run` commands in the manifest.
 Each record names the concrete Python script and arguments, with `pixi run --environment ENV --locked -- python SCRIPT ...` selecting its software environment.
 DataLad records scripts, data, manifest, and lockfile as inputs.
+Every run explicitly uses `--sidecar no`; DataLad embeds its native record in the commit message.
+Descriptive messages retain DataLad's required prefix, with no additional command-copying code.
 No run record invokes a named Pixi task or a recording dispatcher.
 The walkthrough renders task excerpts from the canonical manifest using the `file-code` shortcode's `section` parameter.
 
@@ -80,16 +82,23 @@ That clone retrieves the original input from its public URL.
 The test compares the numerical table and both figure formats and checks that the analysis environment has no Matplotlib and the plotting environment has no SciPy.
 Figure SVG metadata uses a fixed hash salt and omits the creation date to make same-environment reproduction comparable.
 
-The materializer imports the resulting history as:
+The materializer publishes two repositories from the same build:
 
 ```text
+examples/pixi-stellar-distance-walkthrough/full-build/starter
 examples/pixi-stellar-distance-walkthrough/full-build/analysis
 ```
 
+Readers clone `starter`, which ends at the preparation commit and contains no extension run records, measurements, tables, or figures.
+The build clones that starter to execute the walkthrough, producing `analysis`.
+Publish both branches together with the source.
+The per-repository step declaration in `pixi-stellar-distance-walkthrough.steps.json` assigns the step map only to `analysis`, so the starter cannot overwrite it during export.
 The step map identifies preparation, baseline, acquisition, estimation, and figure commits.
 The completed branch includes saved measurements and outputs; earlier checkpoints show their creation.
 Publish that branch and its step-map notes with the source when releasing the walkthrough, using the repository's existing materialization workflow.
 Until published, new checkpoint links and the revised prepared project are local build artifacts.
+For local previews, set `HUGO_PARAMS_GAIASTARTERURL` to a local clone of the starter.
+The `gaia-clone` shortcode then displays a working local clone command; published builds use the public `starter` branch by default.
 
 Relevant checks from the repository root:
 

@@ -10,10 +10,12 @@ Install Pixi and initialize the input dataset if your clone did not include subm
 pixi exec --spec git -- git submodule update --init --recursive
 ```
 
-Reproduce the original distances and the extension using the saved measurements:
+The `starter` branch contains the prepared project before any extension tasks have run.
+Run the original calculation, acquire the additional measurements, and produce the new results:
 
 ```sh
 pixi run baseline
+pixi run acquire
 pixi run estimate
 pixi run verify
 pixi run figure
@@ -24,15 +26,12 @@ The `baseline`, `estimate`, and `figure` tasks record their explicit Python comm
 Configure your Git name and email before recording new work.
 The small tables and figures are tracked directly in Git; this example uses DataLad's no-annex mode.
 
-To query Gaia DR3 again for the original source IDs and record the response:
+The completed `analysis` branch includes the recorded response in `raw/gaia_uncertainties.csv` and the resulting tables and figure.
+When reproducing those saved results, omit `acquire` and use the included response.
+Running `acquire` again queries Gaia DR3 and records a new response for the original source IDs.
 
-```sh
-pixi run acquire
-```
-
-Run this acquisition before estimation when using the prepared checkpoint, which predates the saved response.
-The completed project includes the recorded response in `raw/gaia_uncertainties.csv`.
-Requerying the archive is a new acquisition; reproducing the reported analysis uses the saved response.
+DataLad embeds each execution record in its commit message (`--sidecar no`).
+Use `--sidecar yes` if you prefer a separate tracked record file and a shorter commit message.
 
 ## Methods and artifacts
 
@@ -45,7 +44,7 @@ GSP-Phot also uses parallax, so the comparison describes agreement between relat
 - `output/distance_intervals.csv`: propagated intervals and Gaia comparison fields.
 - `output/distance_summary.json`: sample counts and largest reference differences.
 - `figures/distance_comparison.{png,svg}`: reported figure from the interval table.
-- `.datalad/runinfo/` and Git history: execution records linking artifacts to inputs, scripts, and environment specifications.
+- Git commit messages: full execution records linking artifacts to inputs, scripts, and environment specifications.
 - `source.json`: preparation provenance and exact original Gaia revision.
 
 Use `pixi run git log` to locate run commits and `pixi run datalad --output-format json_pp rerun --report COMMIT` to inspect a record.

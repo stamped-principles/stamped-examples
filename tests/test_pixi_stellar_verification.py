@@ -41,7 +41,7 @@ def test_records_expose_scripts_arguments_and_environment():
              (pixi["feature"]["plotting"]["tasks"]["figure"], "plotting", "code/plot_distances.py")]
     for task, environment, script in cases:
         command = task["cmd"]
-        assert "datalad run --explicit" in command
+        assert "datalad run --explicit --sidecar no" in command
         assert f"-- pixi run --environment {environment} --locked -- python {script} " in command
         assert f"-i {script}" in command
         assert "-i pyproject.toml -i pixi.lock" in command

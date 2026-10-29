@@ -1,0 +1,10 @@
+{{- /* Local previews can point at a prepared starter before publication. */ -}}
+{{- $source := site.Params.gaiaStarterURL -}}
+{{- $command := "" -}}
+{{- if $source -}}
+  <p>This local preview clones the prepared starter from this workspace.</p>
+  {{- $command = printf "pixi exec --spec git -- git clone --recurse-submodules \\\n  %q \\\n  gaia-extension\ncd gaia-extension" $source -}}
+{{- else -}}
+  {{- $command = "pixi exec --spec git -- git clone --recurse-submodules \\\n  --branch examples/pixi-stellar-distance-walkthrough/full-build/starter \\\n  https://github.com/stamped-principles/stamped-examples.git gaia-extension\ncd gaia-extension" -}}
+{{- end -}}
+{{- highlight $command "sh" "" -}}

@@ -30,7 +30,7 @@ plotting = { features = ["plotting"], solve-group = "gaia" }
 
 [tool.pixi.tasks.baseline]
 description = "Reproduce the original distances with the original code"
-cmd = """mkdir -p output && datalad run --explicit --sidecar yes -m 'feat: reproduce the Gaia baseline' \
+cmd = """mkdir -p output && datalad run --explicit --sidecar no -m 'feat: reproduce the Gaia baseline' \
   -i inputs/gaia/code/compute_distances.py -i inputs/gaia/raw/gaia_nearby.csv \
   -i pyproject.toml -i pixi.lock -o output/distances.csv \
   -- pixi run --environment default --locked -- python inputs/gaia/code/compute_distances.py \
@@ -38,7 +38,7 @@ cmd = """mkdir -p output && datalad run --explicit --sidecar yes -m 'feat: repro
 
 [tool.pixi.tasks.acquire]
 description = "Query Gaia DR3 for errors and comparison intervals for the original stars"
-cmd = """datalad run --explicit --sidecar yes -m 'feat: acquire Gaia uncertainty measurements' \
+cmd = """datalad run --explicit --sidecar no -m 'feat: acquire Gaia uncertainty measurements' \
   -i inputs/gaia/raw/gaia_nearby.csv -i code/fetch_uncertainties.py \
   -i pyproject.toml -i pixi.lock -o raw/gaia_uncertainties.csv \
   -- pixi run --environment default --locked -- python code/fetch_uncertainties.py \
@@ -46,7 +46,7 @@ cmd = """datalad run --explicit --sidecar yes -m 'feat: acquire Gaia uncertainty
 
 [tool.pixi.feature.analysis.tasks.estimate]
 description = "Propagate parallax errors and record the interval table"
-cmd = """datalad run --explicit --sidecar yes -m 'feat: estimate Gaia distance intervals' \
+cmd = """datalad run --explicit --sidecar no -m 'feat: estimate Gaia distance intervals' \
   -i inputs/gaia/raw/gaia_nearby.csv -i output/distances.csv -i raw/gaia_uncertainties.csv \
   -i code/estimate_distances.py -i pyproject.toml -i pixi.lock \
   -o output/distance_intervals.csv -o output/distance_summary.json \
@@ -60,7 +60,7 @@ cmd = "python code/validate.py"
 
 [tool.pixi.feature.plotting.tasks.figure]
 description = "Plot the saved interval table and record the figure"
-cmd = """datalad run --explicit --sidecar yes -m 'feat: plot Gaia distance intervals' \
+cmd = """datalad run --explicit --sidecar no -m 'feat: plot Gaia distance intervals' \
   -i output/distance_intervals.csv -i code/plot_distances.py -i pyproject.toml -i pixi.lock \
   -o figures/distance_comparison.png -o figures/distance_comparison.svg \
   -- pixi run --environment plotting --locked -- python code/plot_distances.py \

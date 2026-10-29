@@ -32,12 +32,10 @@ Here we use that combination to build on the original research object's STAMPED 
 
 Install [Pixi](https://pixi.prefix.dev/latest/installation/) and clone the prepared project:
 
-```sh
-pixi exec --spec git -- git clone --recurse-submodules \
-  --branch examples/pixi-stellar-distance-walkthrough/full-build/analysis \
-  https://github.com/stamped-principles/stamped-examples.git gaia-extension
-cd gaia-extension
-```
+{{< gaia-clone >}}
+
+This starting point has the software configuration and scripts ready, so we can create the extension's results and execution history as we work through the example.
+The completed analysis is available separately through the checkpoint links below.
 
 The earlier Gaia research object lives at `inputs/gaia/` as a Git submodule.
 It carries the original code, observations, results, and history, and our project records the exact revision used.
@@ -63,6 +61,7 @@ We can immediately repeat the original calculation:
 #!/bin/sh
 # pragma: requires sh git pixi python3
 # pragma: timeout 900
+# pragma: materialize starter
 # pragma: materialize analysis
 # pragma: source examples/gaia-pixi/prepare-project.py
 # pragma: source examples/gaia-pixi/pyproject.toml
@@ -77,13 +76,23 @@ set -eu
 source_bundle="$PWD/examples/gaia-pixi"
 test -e "$source_bundle/gaia/.git" || git submodule update --init -- examples/gaia-pixi/gaia
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
-python3 "$source_bundle/prepare-project.py"
-cd analysis
+python3 "$source_bundle/prepare-project.py" --output starter
+cd starter
 pixi run git config user.name "Demo User"
 pixi run git config user.email "demo@example.com"
 pixi run datalad create --force --no-annex .
 pixi run git add .
 pixi run git commit -m "build: prepare Gaia extension"
+# Preserve the reader's starting point, then run the walkthrough in a clone.
+cd ..
+git clone --recurse-submodules starter analysis
+cd analysis
+git config user.name "Demo User"
+git config user.email "demo@example.com"
+test ! -e raw/gaia_uncertainties.csv
+test ! -e output/distances.csv
+test ! -e figures/distance_comparison.png
+test -z "$(git log --format=%s --grep='DATALAD RUNCMD')"
 ```
 
 ```sh
@@ -131,8 +140,8 @@ This queries the archive and records its response in `raw/gaia_uncertainties.csv
 The run record identifies the original sample, fetch script, manifest, and lockfile as inputs, and the response CSV as the output.
 Opening the record shows the Python command and its arguments, including the selected Pixi environment.
 
-The repository we cloned already contains the Gaia response used for the reported results.
-Run `acquire` to make a new acquisition; to reproduce the reported analysis, continue with that saved response.
+We now have a saved response to use in the remaining steps.
+A collaborator starting from our completed analysis can reuse this response, or run `acquire` to record a new query.
 Recording and sharing the acquired measurements lets collaborators inspect the data underlying a result and choose explicitly when to request a new snapshot.
 
 {{< step-link step="3" text="Research object with the recorded Gaia response" >}}
@@ -153,7 +162,7 @@ pixi run verify
 ```
 
 The `estimate` and `verify` tasks belong to the `analysis` environment, so Pixi selects it from the task name.
-That association makes the project's procedures easy to invoke and gives STAMPED Actionability a practical form.
+We can run either task without selecting the environment ourselves.
 
 `output/distance_intervals.csv` contains the original point estimates, propagated distance bounds, and available GSP-Phot estimates and intervals.
 `output/distance_summary.json` records sample coverage and identifies the largest reference differences by source ID.
@@ -232,6 +241,20 @@ See [Pixi's environment configuration](https://pixi.prefix.dev/latest/reference/
 
 ## Reuse and report the work
 
+We can now inspect the figure commit to see its descriptive message and full execution record:
+
+```sh
+# pragma: testrun full-build
+pixi run git log -1
+```
+
+The recorded command names `python code/plot_distances.py`, its input table and destination, and the locked `plotting` environment.
+Pixi task names provide convenient entry points; the DataLad history retains the concrete commands and file relationships needed to understand a result. {{< detail title="Embedded records and sidecar files" >}} Our tasks explicitly set `--sidecar no`, so DataLad embeds the full execution record in the commit message alongside its descriptive message and required `[DATALAD RUNCMD]` prefix.
+You can also inspect it with `pixi run git show --no-patch HEAD`.
+For larger records, `--sidecar yes` stores the structured record in a separate tracked file and leaves a reference in the commit message, which can make the history easier to read. {{< /detail >}}
+
+## Adapt the analysis to a new objective
+
 Suppose a collaborator wants to change the figure's labels or layout.
 They edit `code/plot_distances.py`, save that change, and run the figure task against the existing interval table:
 
@@ -256,16 +279,6 @@ Here we choose the environment explicitly and pass the script a different output
 The task packages a routine procedure into one command; direct execution lets us use the same environment for work beyond that procedure.
 To retain an exploratory run as part of the research object's provenance, wrap its concrete command in `datalad run`, following the input and output declarations shown in the figure task.
 
-We can examine how the figure was produced using DataLad's report mode.
-Although the subcommand is named `rerun`, `--report` displays the saved execution record without running the computation:
-
-```sh
-# pragma: testrun full-build
-pixi run datalad --output-format json_pp rerun --report HEAD
-```
-
-The recorded command names `python code/plot_distances.py`, its input table and destination, and the locked `plotting` environment.
-Pixi task names provide convenient entry points; the DataLad history retains the concrete commands and file relationships needed to understand a result.
 Using Pixi and DataLad together gives us flexibility to explore an analysis with different environments, code, or data while retaining a record of what changed.
 For example, we could test a newer numerical library against the same observations, or apply the same method to an updated Gaia sample.
 [This guide]({{< ref "guides/choosing-what-changes" >}}) explores how to choose what stays fixed during these experiments and how to return to a historical computation.
@@ -289,6 +302,7 @@ Guided by the STAMPED principles, that combination helps us improve rigor, effic
 # pragma: render hidden
 pixi run --environment analysis --locked python -c "import importlib.util; assert importlib.util.find_spec('matplotlib') is None"
 pixi run --environment plotting --locked python -c "import importlib.util; assert importlib.util.find_spec('scipy') is None"
+pixi run python -c "import subprocess; messages = subprocess.check_output(['git', 'log', '--format=%B', '--grep=DATALAD RUNCMD'], text=True); assert messages.count('\"cmd\":') == 4; assert not __import__('pathlib').Path('.datalad/runinfo').exists()"
 source_repo="$PWD"
 clone_dir=$(mktemp -d "${TMPDIR:-/tmp}/gaia-extension-reproduce-XXXXXX")
 git clone --recurse-submodules "$source_repo" "$clone_dir/project"
