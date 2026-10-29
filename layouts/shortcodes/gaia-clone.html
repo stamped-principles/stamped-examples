@@ -1,0 +1,6 @@
+{{- /* Clone one history and explicitly return to its preparation checkpoint. */ -}}
+{{- $command := "pixi exec --spec git -- git clone --recurse-submodules \\\n  --branch examples/pixi-stellar-distance-walkthrough/full-build/analysis \\\n  https://github.com/stamped-principles/stamped-examples.git gaia-extension\ncd gaia-extension" -}}
+{{- $data := index site.Data .Page.Params.materialize_stem -}}
+{{- $sha := index $data "step-1" | default "PREPARATION_COMMIT" -}}
+{{- $command = printf "%s\npixi run git log --oneline\npixi run git checkout -b my-analysis %s\npixi run git submodule update --init --recursive" $command $sha -}}
+{{- highlight $command "sh" "" -}}

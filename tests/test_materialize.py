@@ -694,3 +694,24 @@ class TestDematerialize:
             capture_output=True, text=True,
         )
         assert result.stdout.strip() == ""
+
+
+def test_script_hash_tracks_external_source(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "setup.py"
+    source.write_text("print('first')\n")
+    code = "# pragma: source setup.py\npython setup.py\n"
+    before = materialize_mod.script_hash(code)
+    source.write_text("print('updated')\n")
+    assert materialize_mod.script_hash(code) != before
+
+
+def test_script_hash_tracks_submodule_revision(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "gaia").mkdir()
+    (tmp_path / "gaia/.git").write_text("gitdir: unused-for-this-test\n")
+    code = "# pragma: submodule gaia\n"
+    with patch.object(materialize_mod.subprocess, "check_output", return_value="a" * 40):
+        before = materialize_mod.script_hash(code)
+    with patch.object(materialize_mod.subprocess, "check_output", return_value="b" * 40):
+        assert materialize_mod.script_hash(code) != before

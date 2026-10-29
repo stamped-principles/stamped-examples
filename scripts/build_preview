@@ -1,0 +1,12 @@
+#!/bin/sh
+# Load the published example checkpoints before rendering a PR preview.
+set -eu
+git fetch origin 'refs/heads/examples/*:refs/remotes/origin/examples/*' \
+    'refs/notes/materialize-step-map:refs/notes/materialize-step-map'
+# The existing exporter reads local example branches.
+git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/examples/ |
+while IFS= read -r branch; do
+    git update-ref "refs/heads/$branch" "refs/remotes/origin/$branch"
+done
+python3 scripts/materialize_examples --export-data-from-notes
+hugo --gc --minify -b "$1"
