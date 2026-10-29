@@ -61,8 +61,6 @@ This directory contains the migration script and `gaia/`, a git submodule record
 # pragma: source examples/gaia-pixi/extension/plot_distances.py
 # pragma: source examples/gaia-pixi/extension/record.py
 # pragma: source examples/gaia-pixi/extension/validate.py
-# pragma: source examples/gaia-pixi/data/gaia_uncertainties.csv
-# pragma: source examples/gaia-pixi/data/README.md
 # pragma: submodule examples/gaia-pixi/gaia
 set -eu
 source_bundle="$PWD/examples/gaia-pixi"
@@ -112,7 +110,7 @@ Save the changes and generated `pixi.lock` with the project.
 # pragma: render hidden
 pixi run git config user.name "Demo User"
 pixi run git config user.email "demo@example.com"
-pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ code/extension raw/gaia_uncertainties* migrate-gaia-to-pixi.py pixi-source.json
+pixi run git add pyproject.toml pixi.lock .gitignore Makefile requirements.txt README.md test/ code/extension migrate-gaia-to-pixi.py pixi-source.json
 pixi run git commit -m "build: express the Gaia workflow with Pixi"
 ```
 
@@ -125,13 +123,16 @@ How much precision does that number imply, and do the small differences from Gai
 We will propagate the reported parallax errors and then plot a comparison, using separate environments for the numerical analysis and figure.
 
 The source bundle includes ordinary [analysis and plotting scripts](https://github.com/stamped-principles/stamped-examples/tree/main/examples/gaia-pixi/extension), copied into `code/extension/` by the migration.
-It also supplies `raw/gaia_uncertainties.csv`: a saved DR3 query for the same 100 source IDs, adding parallax errors and GSP-Phot distance intervals.
-The numerical task checks the IDs and parallaxes against our baseline before using this snapshot.
+We first query DR3 for the same source IDs to add parallax errors and GSP-Phot distance intervals.
+As in the previous example, DataLad records the acquisition command and its output, and subsequent runs reuse the saved data.
+The numerical task checks the IDs and parallaxes against our baseline before using them.
 
 Add the scientific dependencies and register the analysis tasks:
 
 ```sh
 # pragma: testrun full-build
+pixi task add uncertainties "test -f raw/gaia_uncertainties.csv || python code/extension/record.py acquisition"
+pixi workspace environment add analysis
 pixi add --environment analysis numpy scipy
 pixi task add --environment analysis validate "python code/extension/validate.py"
 pixi task add --environment analysis estimate "python code/extension/record.py analysis"
@@ -144,10 +145,19 @@ Its recorded command explicitly selects the `analysis` environment.
 ```sh
 # pragma: testrun full-build
 pixi run datalad create --force --no-annex .
-pixi run git add pyproject.toml pixi.lock code/extension raw/gaia_uncertainties.csv
+pixi run git add pyproject.toml pixi.lock code/extension
 pixi run git commit -m "feat: add the uncertainty analysis environment"
+pixi run --locked uncertainties
 pixi run --environment analysis validate
 pixi run --environment analysis --locked estimate
+```
+
+```sh
+# pragma: testrun full-build
+# pragma: render hidden
+acquisition_head=$(git rev-parse HEAD)
+pixi run --locked uncertainties
+test "$(git rev-parse HEAD)" = "$acquisition_head"
 ```
 
 `output/distance_intervals.csv` now includes a distance interval for every star, along with the reference values where available.
@@ -183,6 +193,7 @@ For the figure, add a separate environment and task:
 
 ```sh
 # pragma: testrun full-build
+pixi workspace environment add plotting
 pixi add --environment plotting matplotlib
 pixi task add --environment plotting figure "python code/extension/record.py plotting"
 pixi run git add pyproject.toml pixi.lock
@@ -227,7 +238,15 @@ pixi run --environment plotting --locked figure
 
 The first command records the numerical outputs; the second records the figure made from them.
 Neither requires a live Gaia query because the input snapshot travels with the project.
-The acquisition script `code/extension/fetch_uncertainties.py` is available when deliberately refreshing that snapshot; the existing pinned Gaia baseline remains unchanged.
+`pixi run uncertainties` reuses the saved CSV, or fetches and records it if missing.
+To deliberately query Gaia again and record an updated snapshot, run:
+
+```sh
+pixi run --locked python code/extension/record.py acquisition
+```
+
+The acquisition record names the baseline source IDs, fetch script, manifest, and lock as inputs.
+It can also be replayed with `datalad rerun`, as in the previous example; the pinned Gaia baseline remains unchanged.
 
 [Choosing what stays fixed during replay]({{< ref "guides/choosing-what-changes" >}}) explains how to apply a recorded command to changed inputs or recover a historical computation.
 Here, the source submodule identifies the starting analysis, Pixi selects the tools for each extension, and DataLad connects the resulting tables and figures to their inputs.

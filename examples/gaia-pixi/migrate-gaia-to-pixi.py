@@ -90,14 +90,10 @@ def prepare(source, output):
     subprocess.run(["git", "switch", "-c", "pixi-analysis"], cwd=output, check=True)
     shutil.copytree(script.parent / "extension", output / "code/extension",
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    shutil.copy2(script.parent / "data/gaia_uncertainties.csv", output / "raw/gaia_uncertainties.csv")
-    shutil.copy2(script.parent / "data/README.md", output / "raw/gaia_uncertainties.README.md")
     provenance["extension_sha256"] = {
         str(path.relative_to(script.parent)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted((script.parent / "extension").glob("*.py"))
     }
-    provenance["catalog_sha256"] = hashlib.sha256(
-        (script.parent / "data/gaia_uncertainties.csv").read_bytes()).hexdigest()
     shutil.copy2(script, output / script.name)
     (output / "pixi-source.json").write_text(json.dumps(provenance, indent=2) + "\n")
     previous = Path.cwd()
