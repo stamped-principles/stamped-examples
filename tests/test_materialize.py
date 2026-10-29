@@ -715,25 +715,3 @@ def test_script_hash_tracks_submodule_revision(tmp_path, monkeypatch):
         before = materialize_mod.script_hash(code)
     with patch.object(materialize_mod.subprocess, "check_output", return_value="b" * 40):
         assert materialize_mod.script_hash(code) != before
-
-
-def test_starter_and_completed_project_have_separate_step_declarations(tmp_path):
-    """A starter must not require later runs or write a partial step map."""
-    run_dir = tmp_path / "build"
-    for name in ("starter", "analysis"):
-        repo = run_dir / name
-        repo.mkdir(parents=True)
-        subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
-    block = ScriptBlock(
-        file_stem="gaia",
-        code="echo build", pragmas={"testrun": "full-build", "materialize": ["starter", "analysis"]},
-    )
-    with patch.object(materialize_mod, "execute_script", return_value=run_dir), \
-         patch.object(materialize_mod, "get_cached_hash", return_value=None), \
-         patch.object(materialize_mod, "_resolve_steps", return_value={}) as resolve:
-        materialize_mod.process_block(
-            block, remote_url="", dry_run=True, strict=True,
-            worktrees_under=None, declared_steps={"analysis": ["prepare", "run"]},
-        )
-    assert resolve.call_args_list[0].args == (run_dir / "starter", None)
-    assert resolve.call_args_list[1].args == (run_dir / "analysis", ["prepare", "run"])

@@ -1,10 +1,13 @@
-{{- /* Local previews can point at a prepared starter before publication. */ -}}
-{{- $source := site.Params.gaiaStarterURL -}}
+{{- /* Clone one history and explicitly return to its preparation checkpoint. */ -}}
+{{- $source := site.Params.gaiaAnalysisURL -}}
 {{- $command := "" -}}
 {{- if $source -}}
-  <p>This local preview clones the prepared starter from this workspace.</p>
+  <p>This local preview clones the analysis history from this workspace.</p>
   {{- $command = printf "pixi exec --spec git -- git clone --recurse-submodules \\\n  %q \\\n  gaia-extension\ncd gaia-extension" $source -}}
 {{- else -}}
-  {{- $command = "pixi exec --spec git -- git clone --recurse-submodules \\\n  --branch examples/pixi-stellar-distance-walkthrough/full-build/starter \\\n  https://github.com/stamped-principles/stamped-examples.git gaia-extension\ncd gaia-extension" -}}
+  {{- $command = "pixi exec --spec git -- git clone --recurse-submodules \\\n  --branch examples/pixi-stellar-distance-walkthrough/full-build/analysis \\\n  https://github.com/stamped-principles/stamped-examples.git gaia-extension\ncd gaia-extension" -}}
 {{- end -}}
+{{- $data := index site.Data .Page.Params.materialize_stem -}}
+{{- $sha := index $data "step-1" | default "PREPARATION_COMMIT" -}}
+{{- $command = printf "%s\npixi run git log --oneline\npixi run git checkout -b my-analysis %s\npixi run git submodule update --init --recursive" $command $sha -}}
 {{- highlight $command "sh" "" -}}

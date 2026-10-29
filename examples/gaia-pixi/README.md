@@ -82,23 +82,21 @@ That clone retrieves the original input from its public URL.
 The test compares the numerical table and both figure formats and checks that the analysis environment has no Matplotlib and the plotting environment has no SciPy.
 Figure SVG metadata uses a fixed hash salt and omits the creation date to make same-environment reproduction comparable.
 
-The materializer publishes two repositories from the same build:
+The materializer publishes the analysis history as one branch:
 
 ```text
-examples/pixi-stellar-distance-walkthrough/full-build/starter
 examples/pixi-stellar-distance-walkthrough/full-build/analysis
 ```
 
-Readers clone `starter`, which ends at the preparation commit and contains no extension run records, measurements, tables, or figures.
-The build clones that starter to execute the walkthrough, producing `analysis`.
-Publish both branches together with the source.
-The per-repository step declaration in `pixi-stellar-distance-walkthrough.steps.json` assigns the step map only to `analysis`, so the starter cannot overwrite it during export.
+Readers clone this branch, inspect its history, and explicitly check out the preparation commit on a new local branch before running the tasks.
+The same published history contains the starting point and all completed results.
+The `gaia-clone` shortcode reads the preparation hash from the existing step map, keeping the checkout instruction synchronized with the published history.
 The step map identifies preparation, baseline, acquisition, estimation, and figure commits.
 The completed branch includes saved measurements and outputs; earlier checkpoints show their creation.
 Publish that branch and its step-map notes with the source when releasing the walkthrough, using the repository's existing materialization workflow.
 Until published, new checkpoint links and the revised prepared project are local build artifacts.
-For local previews, set `HUGO_PARAMS_GAIASTARTERURL` to a local clone of the starter.
-The `gaia-clone` shortcode then displays a working local clone command; published builds use the public `starter` branch by default.
+For local previews, set `HUGO_PARAMS_GAIAANALYSISURL` to a local clone of the completed analysis.
+The `gaia-clone` shortcode then displays a working local clone command; published builds use the public `analysis` branch by default.
 
 Relevant checks from the repository root:
 

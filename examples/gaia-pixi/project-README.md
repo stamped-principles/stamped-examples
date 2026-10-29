@@ -10,7 +10,10 @@ Install Pixi and initialize the input dataset if your clone did not include subm
 pixi exec --spec git -- git submodule update --init --recursive
 ```
 
-The `starter` branch contains the prepared project before any extension tasks have run.
+The repository's history includes both the prepared project and the completed analysis.
+To work through the example from the beginning, inspect `pixi run git log --oneline` and find the `build: prepare Gaia extension` commit.
+Use `pixi run git checkout -b my-analysis COMMIT` with that commit's hash, then `pixi run git submodule update --init --recursive`.
+This creates a local branch before the extension tasks have run; the original branch retains the completed results.
 Run the original calculation, acquire the additional measurements, and produce the new results:
 
 ```sh

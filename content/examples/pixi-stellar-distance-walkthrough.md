@@ -30,12 +30,14 @@ Here we use that combination to build on the original research object's STAMPED 
 
 ## Reuse the original analysis
 
-Install [Pixi](https://pixi.prefix.dev/latest/installation/) and clone the prepared project:
+Install [Pixi](https://pixi.prefix.dev/latest/installation/) and clone the analysis repository:
 
 {{< gaia-clone >}}
 
-This starting point has the software configuration and scripts ready, so we can create the extension's results and execution history as we work through the example.
-The completed analysis is available separately through the checkpoint links below.
+The log shows how the analysis was built, from project preparation through data acquisition, calculation, and plotting.
+We check out the preparation commit on a new local branch, `my-analysis`, to start before those computations.
+The scripts and software configuration are ready; our task executions will now create the results and their records.
+The completed analysis remains in the original branch, and the checkpoint links below show its successive stages.
 
 The earlier Gaia research object lives at `inputs/gaia/` as a Git submodule.
 It carries the original code, observations, results, and history, and our project records the exact revision used.
@@ -61,7 +63,6 @@ We can immediately repeat the original calculation:
 #!/bin/sh
 # pragma: requires sh git pixi python3
 # pragma: timeout 900
-# pragma: materialize starter
 # pragma: materialize analysis
 # pragma: source examples/gaia-pixi/prepare-project.py
 # pragma: source examples/gaia-pixi/pyproject.toml
@@ -76,19 +77,13 @@ set -eu
 source_bundle="$PWD/examples/gaia-pixi"
 test -e "$source_bundle/gaia/.git" || git submodule update --init -- examples/gaia-pixi/gaia
 cd "$(mktemp -d "${TMPDIR:-/tmp}/stellar-pixi-XXXXXX")"
-python3 "$source_bundle/prepare-project.py" --output starter
-cd starter
+python3 "$source_bundle/prepare-project.py"
+cd analysis
 pixi run git config user.name "Demo User"
 pixi run git config user.email "demo@example.com"
 pixi run datalad create --force --no-annex .
 pixi run git add .
 pixi run git commit -m "build: prepare Gaia extension"
-# Preserve the reader's starting point, then run the walkthrough in a clone.
-cd ..
-git clone --recurse-submodules starter analysis
-cd analysis
-git config user.name "Demo User"
-git config user.email "demo@example.com"
 test ! -e raw/gaia_uncertainties.csv
 test ! -e output/distances.csv
 test ! -e figures/distance_comparison.png
@@ -310,7 +305,18 @@ git clone --recurse-submodules "$source_repo" "$clone_dir/project"
     cd "$clone_dir/project"
     git config user.name "Demo User"
     git config user.email "demo@example.com"
-    rm output/distances.csv output/distance_intervals.csv output/distance_summary.json
+    completed_revision=$(git rev-parse HEAD)
+    preparation=$(git log --format=%H --grep='^build: prepare Gaia extension$' -1)
+    pixi run git log --oneline
+    pixi run git checkout -b my-analysis "$preparation"
+    pixi run git submodule update --init --recursive
+    test ! -e raw/gaia_uncertainties.csv
+    test ! -e output/distances.csv
+    test ! -e figures/distance_comparison.png
+    test -z "$(git log --format=%s --grep='DATALAD RUNCMD')"
+    # Reuse the recorded response for this offline reproduction check.
+    git restore --source="$completed_revision" -- raw/gaia_uncertainties.csv
+    pixi run datalad save -m "data: reuse recorded Gaia response" raw/gaia_uncertainties.csv
     pixi run baseline
     pixi run estimate
     pixi run verify

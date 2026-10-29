@@ -483,7 +483,7 @@ def process_block(
     dry_run: bool,
     strict: bool,
     worktrees_under: Path | None,
-    declared_steps: list[str] | dict[str, list[str]] | None,
+    declared_steps: list[str] | None,
 ) -> None:
     """Process a single script block: execute, capture, import as branch."""
     testrun_id = str(block.pragmas.get("testrun", "unnamed"))
@@ -543,9 +543,7 @@ def process_block(
                 )
 
             # Map declared step subjects to commit SHAs.
-            repo_steps = (declared_steps.get(repo_subdir)
-                          if isinstance(declared_steps, dict) else declared_steps)
-            step_shas = _resolve_steps(repo_dir, repo_steps)
+            step_shas = _resolve_steps(repo_dir, declared_steps)
 
             if dry_run:
                 print(f"  dry-run: would create branch {bname}")
@@ -637,8 +635,6 @@ def main(argv: list[str] | None = None) -> None:
     for md_path in md_files:
         # Sidecar JSON file (e.g. foo.md → foo.steps.json) declares the
         # ordered commit-subject substrings used by the step-link shortcode.
-        # A mapping assigns steps to a particular materialized repository;
-        # omitted repositories (e.g. a starter snapshot) have no step-map note.
         steps_path = md_path.with_suffix(".steps.json")
         declared_steps = (
             json.loads(steps_path.read_text(encoding="utf-8"))
