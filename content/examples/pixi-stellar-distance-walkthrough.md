@@ -112,7 +112,7 @@ This is direct reuse of the original code and data, with the execution environme
 The original Make targets become named Pixi tasks, and the software specification now includes Python, Git, and DataLad alongside the scientific libraries.
 The original computation accepts input and output paths, so we can run it directly from its pinned dataset.
 The extension's verification script checks the reproduced table and new intervals; the original reference-comparison procedure remains available in `inputs/gaia/test/`.
-The [maintainer preparation recipe](https://github.com/stamped-principles/stamped-examples/tree/main/examples/gaia-pixi) describes how the ready-to-run project is assembled. {{< /detail >}}
+[How we prepared this project](https://github.com/stamped-principles/stamped-examples/blob/main/examples/gaia-pixi/prepare-project.py): the preparation script adds the original analysis as a submodule and copies in the extension scripts, Pixi configuration, and README. {{< /detail >}}
 
 {{< step-link step="2" text="Research object after reproducing the baseline" >}}
 
