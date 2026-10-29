@@ -75,5 +75,10 @@ def analyze(raw, catalog, original, output, summary):
 
 
 if __name__ == "__main__":
-    analyze("raw/gaia_nearby.csv", "raw/gaia_uncertainties.csv", "output/distances.csv",
-            "output/distance_intervals.csv", "output/distance_summary.json")
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ("raw", "catalog", "original", "output", "summary"):
+        parser.add_argument(name)
+    args = parser.parse_args()
+    analyze(args.raw, args.catalog, args.original, args.output, args.summary)

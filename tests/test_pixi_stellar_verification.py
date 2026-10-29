@@ -1,59 +1,49 @@
-"""Exercise the walkthrough's partial-coverage and stale-reference checks."""
-import re
-import subprocess
-import sys
+"""Check the distributed Gaia project's boundaries and explicit provenance."""
+import json
 from pathlib import Path
+import runpy
+import subprocess
+import tomllib
 
 import pytest
 
-
-def test_setup_preserves_project_and_matches_display(tmp_path, monkeypatch):
-    """Keep the migration and displayed complete manifest in agreement."""
-    import runpy
-    import tomlkit
-
-    root = Path(__file__).resolve().parents[1]
-    manifest = (root / "examples/gaia-pixi/gaia/pyproject.toml").read_text()
-    (tmp_path / "pyproject.toml").write_text(manifest)
-    (tmp_path / ".gitignore").write_text("test/reference_distances.csv\n")
-    (tmp_path / "README.md").write_text("    make\n    make test\n")
-    (tmp_path / "test").mkdir()
-    fetch = tmp_path / "test/fetch_reference_distances.sh"
-    fetch.write_text("ids=$(cat sample.csv | paste -sd,)\n")
-    for name in ("Makefile", "requirements.txt"):
-        (tmp_path / name).write_text("old setup\n")
-    monkeypatch.chdir(tmp_path)
-    runpy.run_path(str(root / "examples/gaia-pixi/migrate-gaia-to-pixi.py"))["migrate"]()
-    result = (tmp_path / "pyproject.toml").read_text()
-    assert tomlkit.parse(result)["project"] == tomlkit.parse(manifest)["project"]
-    assert result == (root / "examples/gaia-pixi/pyproject.expected.toml").read_text()
-    assert fetch.read_text() == "ids=$(cat sample.csv | paste -sd,)\n"
-    assert not (tmp_path / "Makefile").exists()
-    assert not (tmp_path / "requirements.txt").exists()
+ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "examples/gaia-pixi"
 
 
-def test_prepare_preserves_baseline_and_records_provenance(tmp_path):
-    import hashlib
-    import json
-    import runpy
-
-    root = Path(__file__).resolve().parents[1]
-    bundle = root / "examples/gaia-pixi"
-    script = bundle / "migrate-gaia-to-pixi.py"
-    baseline = bundle / "gaia"
-    output = tmp_path / "analysis"
+def test_prepare_pins_reusable_input_and_public_url(tmp_path):
+    baseline = BUNDLE / "gaia"
     before = subprocess.check_output(["git", "-C", str(baseline), "rev-parse", "HEAD"], text=True).strip()
-    prepare = runpy.run_path(str(script))["prepare"]
+    prepare = runpy.run_path(str(BUNDLE / "prepare-project.py"))["prepare"]
+    output = tmp_path / "analysis"
     prepare(baseline, output)
-    assert subprocess.check_output(
-        ["git", "-C", str(output), "rev-parse", "HEAD"], text=True
-    ).strip() == before
-    provenance = json.loads((output / "pixi-source.json").read_text())
+    entry = subprocess.check_output(["git", "ls-files", "--stage", "inputs/gaia"], cwd=output, text=True)
+    assert entry.startswith(f"160000 {before}")
+    url = subprocess.check_output(["git", "config", "-f", ".gitmodules", "--get",
+                                   "submodule.inputs/gaia.url"], cwd=output, text=True).strip()
+    assert url == "https://github.com/stamped-principles/stamped-examples.git"
+    provenance = json.loads((output / "source.json").read_text())
     assert provenance["gaia_commit"] == before
-    assert provenance["migration_sha256"] == hashlib.sha256(script.read_bytes()).hexdigest()
-    assert (output / script.name).read_bytes() == script.read_bytes()
-    assert (baseline / "Makefile").is_file()
-    assert not (output / "Makefile").exists()
+    assert (output / "pixi.lock").read_bytes() == (BUNDLE / "pixi.lock").read_bytes()
+    assert not (output / "raw/gaia_uncertainties.csv").exists()
+    assert not (output / "code/record.py").exists()
+    assert (output / "inputs/gaia/Makefile").is_file()
     assert not subprocess.check_output(["git", "-C", str(baseline), "status", "--porcelain"])
     with pytest.raises(SystemExit, match="already exists"):
         prepare(baseline, output)
+
+
+def test_records_expose_scripts_arguments_and_environment():
+    pixi = tomllib.loads((BUNDLE / "pyproject.toml").read_text())["tool"]["pixi"]
+    cases = [(pixi["tasks"]["baseline"], "default", "inputs/gaia/code/compute_distances.py"),
+             (pixi["tasks"]["acquire"], "default", "code/fetch_uncertainties.py"),
+             (pixi["feature"]["analysis"]["tasks"]["estimate"], "analysis", "code/estimate_distances.py"),
+             (pixi["feature"]["plotting"]["tasks"]["figure"], "plotting", "code/plot_distances.py")]
+    for task, environment, script in cases:
+        command = task["cmd"]
+        assert "datalad run --explicit" in command
+        assert f"-- pixi run --environment {environment} --locked -- python {script} " in command
+        assert f"-i {script}" in command
+        assert "-i pyproject.toml -i pixi.lock" in command
+        assert "-o " in command
+        assert "record.py" not in command

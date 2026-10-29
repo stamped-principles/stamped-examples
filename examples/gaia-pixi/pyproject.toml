@@ -1,0 +1,67 @@
+[project]
+name = "gaia-extension"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = ["requests"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = [{ platform = "linux-64", glibc = "2.34" }, { platform = "osx-arm64", macos = "14.0" }]
+
+[tool.pixi.dependencies]
+git = "*"
+
+[tool.pixi.pypi-dependencies]
+datalad = "*"
+git-annex = "*"
+
+[tool.pixi.feature.analysis.dependencies]
+numpy = "*"
+scipy = "*"
+
+[tool.pixi.feature.plotting.dependencies]
+matplotlib = "*"
+numpy = "*"
+
+[tool.pixi.environments]
+default = { features = [], solve-group = "gaia" }
+analysis = { features = ["analysis"], solve-group = "gaia" }
+plotting = { features = ["plotting"], solve-group = "gaia" }
+
+[tool.pixi.tasks.baseline]
+description = "Reproduce the original distances with the original code"
+cmd = """mkdir -p output && datalad run --explicit --sidecar yes -m 'feat: reproduce the Gaia baseline' \
+  -i inputs/gaia/code/compute_distances.py -i inputs/gaia/raw/gaia_nearby.csv \
+  -i pyproject.toml -i pixi.lock -o output/distances.csv \
+  -- pixi run --environment default --locked -- python inputs/gaia/code/compute_distances.py \
+  inputs/gaia/raw/gaia_nearby.csv output/distances.csv"""
+
+[tool.pixi.tasks.acquire]
+description = "Query Gaia DR3 for errors and comparison intervals for the original stars"
+cmd = """datalad run --explicit --sidecar yes -m 'feat: acquire Gaia uncertainty measurements' \
+  -i inputs/gaia/raw/gaia_nearby.csv -i code/fetch_uncertainties.py \
+  -i pyproject.toml -i pixi.lock -o raw/gaia_uncertainties.csv \
+  -- pixi run --environment default --locked -- python code/fetch_uncertainties.py \
+  inputs/gaia/raw/gaia_nearby.csv raw/gaia_uncertainties.csv"""
+
+[tool.pixi.feature.analysis.tasks.estimate]
+description = "Propagate parallax errors and record the interval table"
+cmd = """datalad run --explicit --sidecar yes -m 'feat: estimate Gaia distance intervals' \
+  -i inputs/gaia/raw/gaia_nearby.csv -i output/distances.csv -i raw/gaia_uncertainties.csv \
+  -i code/estimate_distances.py -i pyproject.toml -i pixi.lock \
+  -o output/distance_intervals.csv -o output/distance_summary.json \
+  -- pixi run --environment analysis --locked -- python code/estimate_distances.py \
+  inputs/gaia/raw/gaia_nearby.csv raw/gaia_uncertainties.csv output/distances.csv \
+  output/distance_intervals.csv output/distance_summary.json"""
+
+[tool.pixi.feature.analysis.tasks.verify]
+description = "Check baseline agreement, scientific assumptions, and saved results"
+cmd = "python code/validate.py"
+
+[tool.pixi.feature.plotting.tasks.figure]
+description = "Plot the saved interval table and record the figure"
+cmd = """datalad run --explicit --sidecar yes -m 'feat: plot Gaia distance intervals' \
+  -i output/distance_intervals.csv -i code/plot_distances.py -i pyproject.toml -i pixi.lock \
+  -o figures/distance_comparison.png -o figures/distance_comparison.svg \
+  -- pixi run --environment plotting --locked -- python code/plot_distances.py \
+  output/distance_intervals.csv figures/distance_comparison"""

@@ -1,4 +1,4 @@
-"""Plot saved numerical results without importing the scientific-analysis stack."""
+"""Plot the saved distance intervals and their Gaia comparisons."""
 import csv
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def plot(source, destination):
     chosen = sorted(matched, key=lambda r: abs(float(r["reference_offset_pct"])), reverse=True)[:8]
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11,
                          "axes.spines.top": False, "axes.spines.right": False,
-                         "axes.titleweight": "bold", "savefig.facecolor": "#f7f8fa"})
+                         "axes.titleweight": "bold", "svg.hashsalt": "gaia-distance-comparison", "savefig.facecolor": "#f7f8fa"})
     fig = plt.figure(figsize=(14, 10), facecolor="#f7f8fa", layout="constrained")
     grid = fig.add_gridspec(2, 2, height_ratios=[1, 1.45])
     ax = fig.add_subplot(grid[0, 0])
@@ -30,7 +30,7 @@ def plot(source, destination):
         ax.annotate(row["source_id"][-6:], (float(row["distance_pc"]), float(row["reference_offset_pct"])),
                     xytext=(5, 5), textcoords="offset points", fontsize=9)
     ax.set(xlabel="Original inverse-parallax distance (pc)", ylabel="GSP-Phot difference (%)",
-           title=f"A  /  {len(matched)} reference estimates: close, but not identical")
+           title=f"A  /  {len(matched)} GSP-Phot distance comparisons")
     ax.grid(alpha=.15)
     ax = fig.add_subplot(grid[0, 1])
     fraction = np.array([float(r["fractional_parallax_error"]) for r in rows])
@@ -68,10 +68,16 @@ def plot(source, destination):
     target = Path(destination)
     target.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(target.with_suffix(".png"), dpi=180)
-    fig.savefig(target.with_suffix(".svg"))
+    fig.savefig(target.with_suffix(".svg"), metadata={"Date": None})
     plt.close(fig)
     print(f"Saved {target.with_suffix('.png')} and SVG")
 
 
 if __name__ == "__main__":
-    plot("output/distance_intervals.csv", "figures/distance_comparison")
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source")
+    parser.add_argument("destination")
+    args = parser.parse_args()
+    plot(args.source, args.destination)

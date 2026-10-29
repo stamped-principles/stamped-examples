@@ -1,5 +1,8 @@
 """Check nonlinear interval propagation against independent expectations."""
 import unittest
+from pathlib import Path
+import tempfile
+import json
 
 import numpy as np
 from scipy.stats import norm
@@ -45,6 +48,22 @@ class Intervals(unittest.TestCase):
         for p, e in [(0, 1), (-1, 1), (10, 0), (10, -1), (np.nan, 1), (10, np.inf)]:
             with self.subTest(p=p, e=e), self.assertRaises(ValueError):
                 distance_interval(p, e)
+
+
+class SavedProject(unittest.TestCase):
+    def test_baseline_reuses_original_calculation(self):
+        self.assertEqual(Path("output/distances.csv").read_bytes(),
+                         Path("inputs/gaia/output/distances.csv").read_bytes())
+
+    def test_saved_intervals_reproduce(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            analyze("inputs/gaia/raw/gaia_nearby.csv", "raw/gaia_uncertainties.csv",
+                    "output/distances.csv", root / "intervals.csv", root / "summary.json")
+            self.assertEqual((root / "intervals.csv").read_bytes(),
+                             Path("output/distance_intervals.csv").read_bytes())
+            self.assertEqual(json.loads((root / "summary.json").read_text()),
+                             json.loads(Path("output/distance_summary.json").read_text()))
 
 
 if __name__ == "__main__":
