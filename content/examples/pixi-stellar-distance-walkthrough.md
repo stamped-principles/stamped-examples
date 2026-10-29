@@ -133,8 +133,6 @@ pixi run acquire
 ```
 
 This queries the archive and records its response in `raw/gaia_uncertainties.csv`.
-The run record identifies the original sample, fetch script, manifest, and lockfile as inputs, and the response CSV as the output.
-Opening the record shows the Python command and its arguments, including the selected Pixi environment.
 
 We now have a saved response to use in the remaining steps.
 A collaborator starting from our completed analysis can reuse this response, or run `acquire` to record a new query.
@@ -213,8 +211,10 @@ The GSP-Phot intervals can be substantially wider than the propagated parallax i
 Their shared use of parallax also matters when interpreting agreement: neither set of estimates provides independent ground truth for the other. {{< /detail >}}
 
 The figure is saved as PNG and SVG in `figures/`.
-Its DataLad record links it to the interval table, plotting script, and environment specifications.
-That connection makes the reported figure an inspectable product of the research object.
+Alongside these files, DataLad saves a run record in the Git commit: the command that was executed, the declared inputs, and the outputs it produced.
+For this figure, the inputs include the interval table, plotting script, and Pixi environment specifications.
+The record and Git history together let us identify which versions were used and how they produced the figure.
+A collaborator can inspect that evidence to understand a reported result, or use the record to repeat the computation.
 
 {{< detail title="What the environments share" >}} All three environments include Python, Requests, Git, DataLad, and git-annex from the project's base declarations.
 These are the shared tools used to acquire data and record computations.
@@ -237,7 +237,8 @@ See [Pixi's environment configuration](https://pixi.prefix.dev/latest/reference/
 
 ## Reuse and report the work
 
-We can now inspect the figure commit to see its descriptive message and full execution record:
+Let’s inspect the record for the figure we just created.
+The latest Git commit contains both a descriptive message and the execution details:
 
 ```sh
 # pragma: testrun full-build
