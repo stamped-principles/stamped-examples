@@ -148,19 +148,16 @@ We can therefore explore a software change without reacquiring data or rebuildin
 
 The preceding experiments apply a recorded procedure to a changed project.
 Recovering an earlier result means selecting its saved inputs, code, and environment specification together.
-Use a separate clone so that this reconstruction has its own installed environments and leaves your experimental branches available.
-
-In that clone, select the original figure run and initialize its pinned input dataset before launching the replay:
+With your changes saved, ask DataLad to restore the earlier state and repeat the figure computation on a new branch:
 
 ```sh
-pixi exec --spec git -- git switch --detach FIGURE_RUN
-pixi exec --spec git -- git submodule update --init --recursive
 pixi run datalad rerun --onto= --branch recover-figure FIGURE_RUN
 pixi run git diff FIGURE_RUN -- figures/
 ```
 
 For this single run, `--onto=` starts from the parent of the figure commit, where its input table, code, and environment specifications were already saved.
-DataLad repeats the plotting command on a new branch.
+DataLad creates and switches to `recover-figure`, leaving your experimental branches available.
+The recorded command invokes Pixi, which prepares the plotting environment from the historical manifest and lockfile before running the script.
 An empty diff means that the regenerated figure files match the recorded files byte for byte.
 The Gaia walkthrough checks this on the same platform; comparisons across platforms may need a different criterion.
 
