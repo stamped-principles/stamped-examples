@@ -1,124 +1,65 @@
-# Gaia extension with Pixi and DataLad
+# Preparing the Gaia extension
 
-This source bundle builds a prepared STAMPED research object extending the original Gaia parallax analysis.
-Readers clone the materialized project and run its scientific tasks; preparation is a maintainer operation.
-The [walkthrough](../../content/examples/pixi-stellar-distance-walkthrough.md) follows baseline reproduction, acquisition of uncertainty measurements, estimation, plotting, and reuse.
+This directory contains the source for the [Gaia/Pixi walkthrough](../../content/examples/pixi-stellar-distance-walkthrough.md).
+`prepare-project.py` assembles a parent dataset with the original Gaia research object at `inputs/gaia/`.
+It copies the canonical `pyproject.toml`, `pixi.lock`, scientific scripts, and project README into that dataset.
+The baseline task uses the original calculation and observations directly from the pinned submodule.
 
-## Project boundary and reuse
+## Build and check
 
-`gaia/` pins the completed original analysis at an exact commit of the published Gaia output branch.
-`prepare-project.py` creates a new parent dataset and includes that original research object at `inputs/gaia/` as a Git submodule.
-The original history stays with that input component; new code, acquired measurements, results, and environment specifications belong to the parent.
-The generated `.gitmodules` records the public upstream URL, so collaborators can retrieve the input outside the build workspace.
-
-The baseline task runs the original `compute_distances.py` directly against its original observations.
-It writes a new table in the parent project, and verification compares that table byte-for-byte with the pinned original result.
-The extension matches the same source IDs and parallaxes, propagates random parallax errors, and plots the resulting intervals against Gaia GSP-Phot.
-
-This composition has precedent in the [DataLad Handbook's YODA guidance](https://handbook.datalad.org/en/latest/basics/101-127-yoda.html).
-The earlier local Gaia example proposes reusable input subdatasets, and the AWK example includes a raw-data submodule.
-The parent extension makes that pattern concrete for a completed analysis.
-The review that motivated this design is preserved in commit `2a85067`.
-
-## Prepare and run locally
-
-From this directory, with the Gaia submodule initialized:
+Commit source changes before preparing a release: the generated `source.json` records the source revision, input hashes, and original Gaia revision.
+The preparation script refuses to overwrite its output directory.
+For a standalone preparation, initialize `gaia/` and run:
 
 ```sh
 python3 prepare-project.py --output analysis
-cd analysis
-pixi run datalad create --force --no-annex .
-pixi run git add .
-pixi run git commit -m "build: prepare Gaia extension"
-pixi run --locked baseline
-pixi run --locked acquire
-pixi run --environment analysis --locked estimate
-pixi run --environment analysis --locked verify
-pixi run --environment plotting --locked figure
 ```
 
-Configure Git author identity before committing.
-The script refuses to overwrite an existing output; choose another `--output` for a fresh build.
-`source.json` records the source revision, dirty-state flag, hashes of the preparation inputs, and exact Gaia revision.
-Commit source changes before preparing a release so this record points to retrievable committed source.
+The resulting project's README describes its tasks and scientific methods.
+Preparation supplies code and software specifications; the recorded acquisition task obtains the uncertainty measurements.
+The small outputs are tracked in Git using DataLad's no-annex mode, so this project does not need git-annex.
 
-The canonical `pyproject.toml` and `pixi.lock` are copied unchanged into the prepared project.
-The scientific scripts in `extension/` become `code/` there.
-No acquisition output is injected during preparation: `acquire` queries Gaia and records its CSV response with DataLad.
-The completed materialized project retains that response for subsequent reproduction.
-Tables and figures are small and tracked directly in Git; the dataset uses no-annex mode.
+From the documentation repository root, use the shared test entry points:
 
-The old Make workflow has been adapted into Pixi tasks around the reusable input component.
-The baseline computation is unchanged; the parent verification script checks exact baseline agreement and uncertainty-method validation.
-The original reference-comparison scripts remain inspectable in the pinned input dataset.
+```sh
+tox -e snippets -- content/examples/pixi-stellar-distance-walkthrough.md tests/test_pixi_stellar_verification.py
+tox -e hugo
+```
 
-## Task and provenance contract
+The walkthrough test includes live Gaia acquisition, with bounded retries for transient connection and server failures.
+Its fresh-clone checks reuse the saved response and test numerical reproduction, plotting, and replay.
+Numerical validation allows relative differences up to `1e-9`; the original four-decimal baseline table remains byte-exact.
+The lock targets Linux x86-64 and macOS ARM64; resolving a platform's dependencies does not substitute for running tests there.
 
-| Task | Environment | Recorded computation |
-| --- | --- | --- |
-| `baseline` | `default` | Original Python script, input observations, output distance table |
-| `acquire` | `default` | Fetch script, original source IDs, output Gaia response |
-| `estimate` | `analysis` | Estimation script, observations, uncertainties, baseline table, output intervals and summary |
-| `figure` | `plotting` | Plotting script, interval table, output PNG and SVG |
-| `verify` | `analysis` | Validation only; creates no research artifacts |
+## Publish checkpoints
 
-Pixi tasks expose their complete `datalad run` commands in the manifest.
-Each record names the concrete Python script and arguments, with `pixi run --environment ENV --locked -- python SCRIPT ...` selecting its software environment.
-DataLad records scripts, data, manifest, and lockfile as inputs.
-Every run explicitly uses `--sidecar no`; DataLad embeds its native record in the commit message.
-Descriptive messages retain DataLad's required prefix, with no additional command-copying code.
-No run record invokes a named Pixi task or a recording dispatcher.
-The walkthrough renders task excerpts from the canonical manifest using the `file-code` shortcode's `section` parameter.
-
-The default tools are shared, with explicit `analysis` and `plotting` features and a shared solve group.
-Package updates may change shared resolved dependencies; inspect the lockfile diff.
-The platform targets are Linux x86-64 and macOS ARM64.
-Fresh-clone tests on the current host validate execution there; resolving the other platform is not an execution test on it.
-
-## Materialization and checks
-
-The executable walkthrough prepares the project, runs each stage, and verifies saved-input reproduction in a fresh clone.
-That clone retrieves the original input from its public URL.
-The test compares the numerical table and both figure formats and checks that the analysis environment has no Matplotlib and the plotting environment has no SciPy.
-Figure SVG metadata uses a fixed hash salt and omits the creation date to make same-environment reproduction comparable.
-
-The materializer publishes the analysis history as one branch:
+The materializer executes the walkthrough and publishes one complete analysis history:
 
 ```text
 examples/pixi-stellar-distance-walkthrough/full-build/analysis
 ```
 
-Readers clone this branch, inspect its history, and explicitly check out the preparation commit on a new local branch before running the tasks.
-The same published history contains the starting point and all completed results.
-The `gaia-clone` shortcode reads the preparation hash from the existing step map, keeping the checkout instruction synchronized with the published history.
 The step map identifies preparation, baseline, acquisition, estimation, and figure commits.
-The completed branch includes saved measurements and outputs; earlier checkpoints show their creation.
-Publish that branch and its step-map notes with the source when releasing the walkthrough, using the repository's existing materialization workflow.
-Until published, new checkpoint links and the revised prepared project are local build artifacts.
-Local previews use the same public clone command and published preparation commit as the website.
-The generated history uses the demo user identity; implementation commit attribution is not added to the demo user's commits.
+Publish this branch and its `materialize-step-map` notes together.
+Readers clone the history and explicitly check out its preparation commit before creating their own results.
 
-Relevant checks from the repository root:
+Both the GitHub Pages workflow and Netlify's preview build call `scripts/load_example_data` to fetch published checkpoints and export the Hugo data files.
+The loader falls back to the upstream repository when a fork lacks those branches or notes.
+The clone shortcode fails the build if the preparation checkpoint is still missing.
 
-```sh
-python -m pytest tests/test_pixi_stellar_verification.py tests/test_materialize.py
-python -m pytest content/examples/pixi-stellar-distance-walkthrough.md -p no:datalad
-hugo --gc --minify
-```
+## Retain and update the original input
 
-The walkthrough test includes a live Gaia acquisition.
-Run saved-input verification separately when diagnosing archive availability versus numerical reproduction.
-For a prepared completed project, the saved-input path is `baseline`, `estimate`, `verify`, then `figure`.
+`gaia/` pins the original analysis at `3e89ae8df2ecfcab7b1d6effd5405c5f9d189d24`.
+The tag `gaia-baseline-3e89ae8` retains this commit even if its materialized branch is regenerated.
+Keep such retention tags when publishing a new input pin; a Git submodule records a commit ID but does not ensure that the remote keeps the object reachable.
+The submodule requests a shallow clone to reduce download cost.
 
-## Update the original Gaia component
-
-From the documentation repository root:
+To review a newer original analysis:
 
 ```sh
 git -C examples/gaia-pixi/gaia fetch origin examples/stellar-distance-walkthrough/full-build/stellar-distance
 git -C examples/gaia-pixi/gaia checkout --detach FETCH_HEAD
 ```
 
-Review the upstream change, rerun the extension checks, and commit the new submodule pointer with any necessary adaptations.
-Each release pins an exact revision; checking for newer upstream work is a maintainer action.
-Ordinary `git submodule update --init` restores the committed pin.
+Test the extension against the updated input, retain the new input commit under a tag, and commit the submodule pointer with any needed adaptations.
+Ordinary `git submodule update --init` restores the existing pin.

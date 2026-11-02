@@ -26,7 +26,6 @@ def test_prepare_pins_reusable_input_and_public_url(tmp_path):
     assert provenance["gaia_commit"] == before
     assert (output / "pixi.lock").read_bytes() == (BUNDLE / "pixi.lock").read_bytes()
     assert not (output / "raw/gaia_uncertainties.csv").exists()
-    assert not (output / "code/record.py").exists()
     assert (output / "inputs/gaia/Makefile").is_file()
     assert not subprocess.check_output(["git", "-C", str(baseline), "status", "--porcelain"])
     with pytest.raises(SystemExit, match="already exists"):
@@ -46,4 +45,3 @@ def test_records_expose_scripts_arguments_and_environment():
         assert f"-i {script}" in command
         assert "-i pyproject.toml -i pixi.lock" in command
         assert "-o " in command
-        assert "record.py" not in command

@@ -4,6 +4,8 @@ import io
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 FIELDS = ["source_id", "parallax", "parallax_error", "distance_gspphot",
           "distance_gspphot_lower", "distance_gspphot_upper"]
@@ -14,7 +16,12 @@ def fetch(baseline, output):
         ids = [row["source_id"] for row in csv.DictReader(stream)]
     if not ids or any(not sid.isdigit() for sid in ids):
         raise ValueError("Expected Gaia source IDs")
-    response = requests.get(
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=Retry(
+        total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )))
+    response = session.get(
         "https://gea.esac.esa.int/tap-server/tap/sync",
         params={"REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv",
                 "QUERY": f"SELECT {', '.join(FIELDS)} FROM gaiadr3.gaia_source "

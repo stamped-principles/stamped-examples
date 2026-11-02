@@ -10,7 +10,39 @@ from scipy.stats import norm
 from estimate_distances import analyze, distance_interval, read_rows
 
 
+def assert_equivalent(actual, expected):
+    """Compare saved scientific results, allowing platform-level roundoff."""
+    if isinstance(expected, dict):
+        assert actual.keys() == expected.keys()
+        for key in expected:
+            if key == "source_id":
+                assert actual[key] == expected[key]
+            else:
+                assert_equivalent(actual[key], expected[key])
+    elif isinstance(expected, list):
+        assert len(actual) == len(expected)
+        for left, right in zip(actual, expected):
+            assert_equivalent(left, right)
+    elif isinstance(expected, bool) or expected is None:
+        assert actual == expected
+    else:
+        try:
+            left, right = float(actual), float(expected)
+        except (TypeError, ValueError):
+            assert actual == expected
+        else:
+            np.testing.assert_allclose(left, right, rtol=1e-9, atol=0)
+
+
 class Intervals(unittest.TestCase):
+    def test_saved_result_comparison_allows_roundoff_but_rejects_changes(self):
+        assert_equivalent({"distance_pc": "10.000000001"}, {"distance_pc": "10"})
+        with self.assertRaises(AssertionError):
+            assert_equivalent({"distance_pc": "10.0001"}, {"distance_pc": "10"})
+        with self.assertRaises(AssertionError):
+            assert_equivalent({"source_id": "123456789012345678"},
+                              {"source_id": "123456789012345679"})
+
     def test_one_sigma_transform(self):
         probability = norm.cdf(1) - norm.cdf(-1)
         point, lo, hi = distance_interval(10, 1, probability)
@@ -29,8 +61,6 @@ class Intervals(unittest.TestCase):
         self.assertLess(abs(coverage - .68), .006)
 
     def test_rejects_duplicate_ids_and_mismatched_samples(self):
-        from pathlib import Path
-        import tempfile
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             duplicate = root / "duplicate.csv"
@@ -60,10 +90,10 @@ class SavedProject(unittest.TestCase):
             root = Path(directory)
             analyze("inputs/gaia/raw/gaia_nearby.csv", "raw/gaia_uncertainties.csv",
                     "output/distances.csv", root / "intervals.csv", root / "summary.json")
-            self.assertEqual((root / "intervals.csv").read_bytes(),
-                             Path("output/distance_intervals.csv").read_bytes())
-            self.assertEqual(json.loads((root / "summary.json").read_text()),
-                             json.loads(Path("output/distance_summary.json").read_text()))
+            assert_equivalent(read_rows(root / "intervals.csv"),
+                              read_rows("output/distance_intervals.csv"))
+            assert_equivalent(json.loads((root / "summary.json").read_text()),
+                              json.loads(Path("output/distance_summary.json").read_text()))
 
 
 if __name__ == "__main__":

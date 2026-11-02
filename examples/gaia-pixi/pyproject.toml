@@ -13,7 +13,6 @@ git = "*"
 
 [tool.pixi.pypi-dependencies]
 datalad = "*"
-git-annex = "*"
 
 [tool.pixi.feature.analysis.dependencies]
 numpy = "*"

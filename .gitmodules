@@ -9,3 +9,4 @@
 	path = examples/gaia-pixi/gaia
 	url = https://github.com/stamped-principles/stamped-examples.git
 	branch = examples/stellar-distance-walkthrough/full-build/stellar-distance
+	shallow = true

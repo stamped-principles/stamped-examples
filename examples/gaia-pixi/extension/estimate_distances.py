@@ -43,7 +43,9 @@ def analyze(raw, catalog, original, output, summary):
             raise ValueError(f"Parallax snapshot differs for {sid}")
         point, lower, upper = distance_interval(p, float(row["parallax_error"]))
         old = float(computed[sid]["distance_pc"])
-        if abs(old - point) > 0.000051:
+        # The original distance table rounds to four decimal places.
+        rounding_tolerance = 0.5e-4 + 1e-6
+        if abs(old - point) > rounding_tolerance:
             raise ValueError(f"Original distance is inconsistent for {sid}")
         result = dict(source_id=sid, original_pc=old, distance_pc=float(point),
                       lower_pc=float(lower), upper_pc=float(upper),

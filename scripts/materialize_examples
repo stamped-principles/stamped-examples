@@ -59,8 +59,19 @@ def script_hash(code: str) -> str:
     digest = hashlib.sha256(code.encode("utf-8"))
     # External setup scripts are part of the example, even when hidden from prose.
     for source in re.findall(r"^# pragma: source (.+)$", code, re.MULTILINE):
-        digest.update(b"\0" + source.encode("utf-8") + b"\0")
-        digest.update(Path(source).read_bytes())
+        path = Path(source)
+        if path.is_dir():
+            # Git excludes ignored build products and lists submodules as entries,
+            # not their contents. The submodule pragma hashes their exact pins.
+            names = subprocess.check_output(
+                ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", source],
+            ).decode().split("\0")
+            paths = sorted({Path(name) for name in names if name and Path(name).is_file()})
+        else:
+            paths = [path]
+        for item in paths:
+            digest.update(b"\0" + item.as_posix().encode("utf-8") + b"\0")
+            digest.update(item.read_bytes())
     for source in re.findall(r"^# pragma: submodule (.+)$", code, re.MULTILINE):
         if (Path(source) / ".git").exists():
             revision = subprocess.check_output(

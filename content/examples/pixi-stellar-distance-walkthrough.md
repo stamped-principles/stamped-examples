@@ -65,14 +65,7 @@ We can immediately repeat the original calculation:
 # pragma: requires sh git pixi python3
 # pragma: timeout 900
 # pragma: materialize analysis
-# pragma: source examples/gaia-pixi/prepare-project.py
-# pragma: source examples/gaia-pixi/pyproject.toml
-# pragma: source examples/gaia-pixi/pixi.lock
-# pragma: source examples/gaia-pixi/project-README.md
-# pragma: source examples/gaia-pixi/extension/estimate_distances.py
-# pragma: source examples/gaia-pixi/extension/fetch_uncertainties.py
-# pragma: source examples/gaia-pixi/extension/plot_distances.py
-# pragma: source examples/gaia-pixi/extension/validate.py
+# pragma: source examples/gaia-pixi
 # pragma: submodule examples/gaia-pixi/gaia
 set -eu
 source_bundle="$PWD/examples/gaia-pixi"
@@ -200,7 +193,7 @@ pixi run figure
 
 ![Comparison of original inverse-parallax distances, propagated uncertainty intervals, and Gaia GSP-Phot estimates.](/images/examples/gaia-pixi-distance-comparison.png)
 
-{{< detail title="Reading the stellar-distance comparison" >}} Gaia supplies GSP-Phot comparisons for 48 of the 100 stars in this sample.
+{{< detail title="Reading the stellar-distance comparison" >}} In the recorded Gaia response shown here, GSP-Phot comparisons are available for 48 of the 100 stars.
 The largest absolute difference from the inverse-parallax estimate is about 0.27%.
 The top-left panel shows these differences; the uncertainty intervals below put their size in context.
 The top-right panel shows how interval asymmetry increases with fractional parallax error.
@@ -216,7 +209,7 @@ For this figure, the inputs include the interval table, plotting script, and Pix
 The record and Git history together let us identify which versions were used and how they produced the figure.
 A collaborator can inspect that evidence to understand a reported result, or use the record to repeat the computation.
 
-{{< detail title="What the environments share" >}} All three environments include Python, Requests, Git, DataLad, and git-annex from the project's base declarations.
+{{< detail title="What the environments share" >}} All three environments include Python, Requests, Git, and DataLad from the project's base declarations.
 These are the shared tools used to acquire data and record computations.
 Here are those declarations:
 
@@ -278,7 +271,8 @@ To retain an exploratory run as part of the research object's provenance, wrap i
 
 Using Pixi and DataLad together gives us flexibility to explore an analysis with different environments, code, or data while retaining a record of what changed.
 For example, we could test a newer numerical library against the same observations, or apply the same method to an updated Gaia sample.
-[This guide]({{< ref "guides/choosing-what-changes" >}}) explores how to choose what stays fixed during these experiments and how to return to a historical computation.
+For each comparison, we can hold the other inputs fixed and use the recorded command to repeat the affected step.
+The saved project revisions also let us return to the code, data, and environment specifications used for an earlier result.
 
 We can now see the value of working with a STAMPED research object: the original analysis supported this extension, and the work we have produced can itself be reused or extended.
 Pixi makes the software and procedures convenient to run; DataLad keeps the resulting computations connected to their inputs and methods.
@@ -300,7 +294,8 @@ STAMPED provides a lens for examining how our tools and practices support these 
 # pragma: render hidden
 pixi run --environment analysis --locked python -c "import importlib.util; assert importlib.util.find_spec('matplotlib') is None"
 pixi run --environment plotting --locked python -c "import importlib.util; assert importlib.util.find_spec('scipy') is None"
-pixi run python -c "import subprocess; messages = subprocess.check_output(['git', 'log', '--format=%B', '--grep=DATALAD RUNCMD'], text=True); assert messages.count('\"cmd\":') == 4; assert not __import__('pathlib').Path('.datalad/runinfo').exists()"
+test "$(git log --format=%B --grep='DATALAD RUNCMD' | grep -c '"cmd":')" -eq 4
+test ! -e .datalad/runinfo
 source_repo="$PWD"
 clone_dir=$(mktemp -d "${TMPDIR:-/tmp}/gaia-extension-reproduce-XXXXXX")
 git clone --recurse-submodules "$source_repo" "$clone_dir/project"
