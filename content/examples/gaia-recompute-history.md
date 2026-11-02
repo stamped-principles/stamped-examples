@@ -1,8 +1,18 @@
 ---
 title: "Choosing what stays fixed during an analysis"
 description: "Use Pixi and DataLad to vary code, data, or dependencies while retaining a clear basis for comparison."
-date: 2026-10-07
+summary: "Use Pixi and DataLad to vary code, data, or dependencies while retaining a clear basis for comparison."
+tags: ["gaia", "python", "git", "datalad", "pixi"]
+date: 2026-11-02
 state: wip
+stamped_principles: ["T", "A", "M", "P", "E"]
+fair_principles: ["R"]
+instrumentation_levels: ["workflow"]
+aspirations: ["reproducibility", "rigor", "transparency", "efficiency"]
+params:
+  tools: ["python", "git", "datalad", "pixi"]
+  difficulty: "intermediate"
+  verified: false
 aliases: ["/guides/choosing-what-changes/"]
 ---
 
@@ -41,11 +51,12 @@ pixi exec --spec git -- git clone --recurse-submodules \
 cd gaia-comparisons
 ```
 
+Before recording runs, configure Git's `user.name` and `user.email` if they are not already set.
 Keep a local reference to this starting point:
 
 ```sh
 pixi run git branch comparison-base
-pixi run git log --oneline
+pixi run git log --oneline --grep='DATALAD RUNCMD'
 ```
 
 In the log, find the commits for estimating the distance intervals and plotting the figure.
@@ -140,6 +151,7 @@ The recorded command launches Pixi with the `analysis` environment, so it uses t
 The observations and calculation script are unchanged.
 The verification task checks the method and reproduces the newly saved results; the final diff compares those results with the original analysis.
 Agreement is useful evidence that this dependency change preserves the tested calculation, while a difference gives us something specific to investigate.
+If replay produces identical outputs, DataLad creates no new run commit; the earlier `build:` commit still records the dependency choice.
 
 Pixi can reuse downloaded packages when preparing environments, and DataLad lets us repeat the numerical step using the saved measurements.
 We can therefore explore a software change without reacquiring data or rebuilding the figure at every iteration.
@@ -153,15 +165,18 @@ With your changes saved, ask DataLad to restore the earlier state and repeat the
 ```sh
 pixi run datalad rerun --onto= --branch recover-figure FIGURE_RUN
 pixi run git diff FIGURE_RUN -- figures/
+pixi run git status --short figures/
 ```
 
 For this single run, `--onto=` starts from the parent of the figure commit, where its input table, code, and environment specifications were already saved.
 DataLad creates and switches to `recover-figure`, leaving your experimental branches available.
 The recorded command invokes Pixi, which prepares the plotting environment from the historical manifest and lockfile before running the script.
-An empty diff means that the regenerated figure files match the recorded files byte for byte.
+An empty diff means that the regenerated figure files match the recorded files byte for byte; the status check also reveals any untracked files in `figures/`.
 The Gaia walkthrough checks this on the same platform; comparisons across platforms may need a different criterion.
 
-{{< detail title="Why the environment is selected inside the recorded command" >}} The Gaia records include `pixi run --environment plotting --locked -- python code/plot_distances.py ...` rather than relying only on the environment that launched DataLad.
+{{< detail title="Why the environment is selected inside the recorded command" >}}
+
+The Gaia records include `pixi run --environment plotting --locked -- python code/plot_distances.py ...` rather than relying only on the environment that launched DataLad.
 When DataLad selects the state to replay, that inner Pixi invocation reads the manifest and lockfile from the selected state before running the script.
 `--locked` requires those two files to agree.
 A Python process that was already running would not change its installed dependencies just because Git checked out another revision.
@@ -169,7 +184,9 @@ A Python process that was already running would not change its installed depende
 This recipe recovers one figure run whose inputs were saved beforehand.
 Replaying a sequence can also involve intermediate code changes and subdatasets; DataLad's `--onto` option does not itself restore subdataset checkouts.
 See the [DataLad rerun reference](https://docs.datalad.org/en/stable/generated/man/datalad-rerun.html) for selecting ranges and alternative starting points.
-Recreating an environment also requires a compatible host and access to the selected packages. {{< /detail >}}
+Recreating an environment also requires a compatible host and access to the selected packages.
+
+{{< /detail >}}
 
 The useful outcome is a comparison we can explain: what changed, what stayed fixed, and what happened to the result.
 With those choices retained in the research object, a collaborator can examine our reasoning, repeat the comparison, or use one of its branches as the starting point for further work.
