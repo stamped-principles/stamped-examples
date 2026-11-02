@@ -1,324 +1,178 @@
 ---
-title: "Recomputing Gaia results with Pixi and DataLad"
-date: 2026-11-02
-description: "Inspect recorded computations, compare deliberate changes, and recover a result using DataLad and Pixi."
-summary: "Continue the Gaia examples by choosing which code, data, and software to reuse when recomputing an analysis."
-tags: ["gaia", "datalad", "pixi", "recomputation"]
-stamped_principles: ["S", "T", "A", "M", "P", "E", "D"]
-params:
-  tools: ["python", "git", "datalad", "pixi"]
-  difficulty: "intermediate"
-  verified: true
+title: "Choosing what stays fixed during an analysis"
+description: "Use Pixi and DataLad to vary code, data, or dependencies while retaining a clear basis for comparison."
+date: 2026-10-07
+state: wip
 aliases: ["/guides/choosing-what-changes/"]
 ---
 
-The [original Gaia example]({{< ref "examples/stellar-distance-walkthrough" >}}) recorded a distance calculation, and the [Pixi extension]({{< ref "examples/pixi-stellar-distance-walkthrough" >}}) added uncertainty estimates and a figure.
-We now have both the results and a history of how they were produced.
-That history can guide the next computation: we can inspect an earlier procedure, apply it to a deliberate change, or recover the state that produced a reported result.
+The [Gaia example]({{< ref "examples/pixi-stellar-distance-walkthrough" >}}) ends with a figure, the numerical results behind it, and records of how both were produced.
+That research object gives us a starting point for asking new questions.
+Would a different implementation change the result?
+Would new measurements change our interpretation?
+Does using a different numerical library version affect the calculation?
 
-DataLad's command-line tools make this history useful beyond reading commit messages.
-They can describe a recorded run before executing it, repeat its command, and show which files changed.
-Pixi prepares the software environment specified by the selected project state.
-Together, they let us choose what to reuse while keeping a clear record of what we changed.
+Each question calls for a different comparison.
+We can make those comparisons easier to interpret by changing one part of the analysis while holding the others constant.
+DataLad retains the commands and connects results to versioned inputs; Pixi prepares the software environment specified by the project revision we choose.
+Together, they let us reuse the parts of the work that still apply and record the changes we want to investigate.
 
-| Question | Change | Keep fixed | Recompute |
+| Question | Change | Keep fixed | Repeat |
 | --- | --- | --- | --- |
-| How should we present these results? | Plotting code | Numerical table and dependencies | Figure |
-| How sensitive is an interval to measurement error? | One input uncertainty | Calculation, dependencies, other measurements | Estimates, then figure |
-| Does a dependency update affect the result? | Selected packages | Code and measurements | Estimates |
-| Can we recover the reported figure? | Freshly installed environment | Recorded inputs, code, and dependency selection | Historical figure run |
+| How should we present these results? | Plotting code | Interval table and plotting dependencies | Figure |
+| How sensitive are the intervals to measurement error? | One input uncertainty | Analysis code, dependencies, and other measurements | Estimates, then figure |
+| Does a library version affect the result? | Dependency selection | Measurements and analysis code | Estimates, then compare |
+| Can we recover an earlier result? | Newly installed environment | Saved inputs, code, and dependency selection | Recorded computation |
 
-For each comparison, choose what you expect to learn before executing it.
-A successful command tells us that the procedure completed; comparing its output tells us whether the change matters.
+Before running, decide what you will compare.
+For a layout change, inspect the figure and check that the numerical table is unchanged.
+For a dependency change, compare numerical results using a tolerance appropriate to the scientific question.
+A command completing successfully tells us that it ran; assessing its output tells us whether the change matters.
 
-## Start from the completed research object
+## Start from the completed Gaia analysis
 
-The commands below start from a fresh copy of the completed Pixi example.
-If you are continuing from that example, you can instead use your completed project with all changes saved, and begin at `comparison-base` below.
-
-```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-#!/bin/sh
-# pragma: requires sh git pixi python3
-# pragma: timeout 900
-set -eu
-demo_workspace=$(mktemp -d "${TMPDIR:-/tmp}/gaia-recompute-XXXXXX")
-cd "$demo_workspace"
-```
+Continue in the completed project from the walkthrough, with any edits saved.
+If you need a fresh copy, clone the completed analysis branch:
 
 ```sh
-# pragma: testrun comparisons
 pixi exec --spec git -- git clone --recurse-submodules \
   --branch examples/pixi-stellar-distance-walkthrough/full-build/analysis \
   https://github.com/stamped-principles/stamped-examples.git gaia-comparisons
 cd gaia-comparisons
 ```
 
-The clone command obtains Git through Pixi before a project environment exists.
-From here on, commands use the project's own tools through `pixi run`.
+Keep a local reference to this starting point:
 
 ```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-git config user.name "Demo User"
-git config user.email "demo@example.com"
-```
-
-Keep a local branch pointing to this completed state and identify the two computations we will reuse:
-
-```sh
-# pragma: testrun comparisons
 pixi run git branch comparison-base
 pixi run git log --oneline
-estimate_run=$(pixi run git log -1 --format=%H --grep='DATALAD RUNCMD.*feat: estimate Gaia distance intervals')
-figure_run=$(pixi run git log -1 --format=%H --grep='DATALAD RUNCMD.*feat: plot Gaia distance intervals')
 ```
 
-`comparison-base` names the state we will compare against.
-The two shell variables hold the commit IDs for estimation and plotting.
-Each experiment starts a new branch from the same base, keeping changes from one comparison out of the next.
+In the log, find the commits for estimating the distance intervals and plotting the figure.
+In the commands below, replace `ESTIMATE_RUN` and `FIGURE_RUN` with those commit hashes.
+They identify the procedures we will reuse; `comparison-base` identifies the project state against which we will compare results.
+Each experiment below starts a separate branch from that same state, so a change from one experiment does not carry into the next.
 
-## Inspect before recomputing
+## Change the code, reuse the results
 
-DataLad can show the proposed replay without executing it:
-
-```sh
-# pragma: testrun comparisons
-pixi run datalad status
-pixi run datalad --output-format json_pp rerun --report "$estimate_run"
-```
-
-The status command identifies unsaved changes that might affect the comparison.
-The report identifies the selected run, its command, declared inputs and outputs, and the action DataLad would take.
-Here the command launches the numerical script through Pixi's `analysis` environment.
-We can check that this is the procedure we intend to reuse before spending time on it.
-
-For a shell script showing the selected commands, DataLad can also write to the terminal:
+The walkthrough showed how to revise a figure with `pixi run figure`.
+We can also select its recorded command explicitly, which is useful when we want to repeat a particular procedure from the history.
 
 ```sh
-# pragma: testrun comparisons
-pixi run datalad rerun --script - "$estimate_run"
-```
-
-These inspection commands work from the execution records already in the project.
-We can use them even when the original task name has changed or we want to review the command independently of the task definition.
-
-## Change the presentation, reuse the numerical results
-
-Start a branch for revising the figure:
-
-```sh
-# pragma: testrun comparisons
 pixi run git switch -c compare-plot comparison-base
 ```
 
-Edit a title or label in `code/plot_distances.py`.
-The executable version of this example changes the figure title to “Gaia distances with measurement uncertainty”.
-Save the edit, then ask DataLad to repeat the earlier plotting command:
+Edit the labels or layout in `code/plot_distances.py`, then save the edit and replay the figure command:
 
 ```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-pixi run --environment plotting python - <<'PY'
-from pathlib import Path
-p = Path('code/plot_distances.py')
-p.write_text(p.read_text().replace('From a point estimate to an uncertainty-aware comparison',
-                                  'Gaia distances with measurement uncertainty'))
-PY
+pixi run datalad save -m "style: revise the Gaia figure layout" code/plot_distances.py
+pixi run datalad rerun FIGURE_RUN
+pixi run git diff comparison-base -- output/distance_intervals.csv
 ```
 
-```sh
-# pragma: testrun comparisons
-pixi run datalad save -m "style: clarify the Gaia figure title" code/plot_distances.py
-pixi run datalad rerun "$figure_run"
-pixi run datalad diff --from comparison-base --to HEAD
-```
+An empty diff confirms that the saved interval table has not changed.
+The new figure uses that table and the revised plotting code, with the same dependency selection.
+We only need the plotting environment and the saved numerical results to do this work.
 
-The diff summarizes the changed script and figure files.
-The numerical table and the environment specifications remain unchanged.
-Only the plotting step needs to run: its saved input table already contains the scientific results.
+**Selecting a run commit selects its command; by default, replay uses the current project state.** Here that is exactly what we want: the earlier plotting procedure applied to our revised code.
+The new run record connects the resulting figure to that revision.
 
-**Selecting a run commit selects its command; by default, replay applies that command to the current project state.** Here that means using the revised plotting script.
-The resulting run record connects the new figure to that revision.
+## Change the inputs, reuse the method
+
+Suppose we want to check how sensitive a distance interval is to the reported parallax error.
+Start another experiment from the original comparison point:
 
 ```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-test -z "$(git diff comparison-base -- output/ pixi.lock pyproject.toml)"
-test -n "$(git diff comparison-base -- figures/)"
-```
-
-## Change one input, reuse the method
-
-Now consider a sensitivity question: what happens to a star's distance interval if its parallax error is 10% larger?
-Start again from the completed analysis:
-
-```sh
-# pragma: testrun comparisons
 pixi run git switch -c compare-data comparison-base
 ```
 
-In `raw/gaia_uncertainties.csv`, increase `parallax_error` for one source by 10%, leaving all other fields and rows unchanged.
-This is a deliberately altered input for a sensitivity check, not a revised Gaia measurement.
-The original response remains available at `comparison-base`.
+In `raw/gaia_uncertainties.csv`, increase `parallax_error` for one source by 10%, leaving its other fields and all other rows unchanged.
+This is a deliberately altered input for a sensitivity check, not a new Gaia measurement.
+Save it with a message that makes that distinction explicit, then apply the original calculation:
 
 ```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-pixi run python - <<'PY'
-import csv
-from pathlib import Path
-p = Path('raw/gaia_uncertainties.csv')
-with p.open() as stream:
-    reader = csv.DictReader(stream)
-    fields, rows = reader.fieldnames, list(reader)
-rows[0]['parallax_error'] = str(float(rows[0]['parallax_error']) * 1.1)
-with p.open('w', newline='') as stream:
-    writer = csv.DictWriter(stream, fieldnames=fields)
-    writer.writeheader()
-    writer.writerows(rows)
-PY
-```
-
-Record the purpose of the change and repeat the numerical calculation:
-
-```sh
-# pragma: testrun comparisons
 pixi run datalad save -m "data: increase one parallax error by 10% for sensitivity analysis" raw/gaia_uncertainties.csv
-pixi run datalad rerun "$estimate_run"
+pixi run datalad rerun ESTIMATE_RUN
 pixi run verify
-pixi run datalad diff --from comparison-base --to HEAD
-```
-
-We expect the chosen star's bounds to widen, while its point estimate and the other stars' results remain unchanged.
-DataLad's diff identifies the affected files; inspect the values within the interval table to assess that expectation:
-
-```sh
-# pragma: testrun comparisons
 pixi run git diff comparison-base -- output/distance_intervals.csv
-pixi run datalad rerun "$figure_run"
+pixi run datalad rerun FIGURE_RUN
 ```
 
-The calculation and dependency selection remain fixed, and the original observations and baseline distances are reused.
-The figure now presents the changed intervals using the original plotting code.
-The same approach applies to a collaborator's revised input dataset: save it with its source and purpose, then repeat the affected computations.
+The code and dependency selection remain fixed.
+We expect the chosen star's distance bounds to widen while its point estimate and the other stars' estimates remain unchanged.
+The output diff lets us check that expectation, and the figure shows the result in context.
+The original observations and baseline distances are reused.
+
+The same approach applies to a revised dataset from a collaborator: save the new inputs, identify where they came from, and repeat the affected calculation.
+The Gaia extension checks that its uncertainty table covers the original sample and agrees with its parallaxes.
+A different sample or revised parallaxes would require extending the earlier stages too; that would be a broader experiment.
+
+Acquiring a new archive response is a separate choice, available through `pixi run acquire`.
+Reusing a saved response lets us investigate the calculation without changing the measurements at the same time or repeating the query.
+
+## Change the dependencies, reuse the code and data
+
+To investigate a software change, return to the same starting point and select a different SciPy release.
+The published Gaia project uses SciPy 1.18.1; here we compare its results with 1.17.1:
 
 ```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-pixi run --environment analysis python - <<'PY'
-import csv
-import io
-import subprocess
-from pathlib import Path
-old = {r['source_id']: r for r in csv.DictReader(io.StringIO(subprocess.check_output(
-    ['git', 'show', 'comparison-base:output/distance_intervals.csv'], text=True)))}
-with Path('output/distance_intervals.csv').open() as stream:
-    new = {r['source_id']: r for r in csv.DictReader(stream)}
-changed = [sid for sid in old if old[sid] != new[sid]]
-assert len(changed) == 1
-sid = changed[0]
-assert new[sid]['distance_pc'] == old[sid]['distance_pc']
-assert float(new[sid]['lower_pc']) < float(old[sid]['lower_pc'])
-assert float(new[sid]['upper_pc']) > float(old[sid]['upper_pc'])
-PY
-test -z "$(git diff comparison-base -- code/ pixi.lock pyproject.toml output/distances.csv)"
-```
-
-## Change the software, reuse the code and measurements
-
-Start a third comparison and ask Pixi for a compatible SciPy update:
-
-```sh
-# pragma: testrun comparisons
 pixi run git switch -c compare-dependencies comparison-base
-pixi update scipy
-pixi run git diff -- pixi.lock
+pixi add --feature analysis "scipy==1.17.1"
+pixi run git diff -- pyproject.toml pixi.lock
 ```
 
-Inspect the selection before interpreting this as a software experiment.
-An update may leave package versions and builds unchanged, or alter only lockfile metadata.
-If packages do change, SciPy's requirements and the shared solve group may affect other libraries too.
-The comparison tests that resulting selection; attributing a numerical difference to one library requires checking what else changed.
+Pixi saves the requested version in the manifest and resolves the packages needed to use it.
+Inspect the changes before proceeding: SciPy's requirements and the shared solve group may lead to changes in other packages too.
+The experiment tests the resulting dependency selection, so attributing a difference to SciPy alone requires checking what else changed.
+To investigate the newest compatible release instead, use [`pixi update scipy`](https://pixi.prefix.dev/latest/reference/cli/pixi/update/).
+Check that package versions or builds actually changed: a metadata-only lockfile diff does not establish a different software environment.
 
-Save the environment specification and replay the same numerical command:
+Save the chosen environment specification and repeat the numerical calculation:
 
 ```sh
-# pragma: testrun comparisons
-pixi run datalad save -m "build: record dependency selection for comparison" pixi.lock
-pixi run datalad rerun "$estimate_run"
+pixi run datalad save -m "build: compare numerical results with SciPy 1.17.1" pyproject.toml pixi.lock
+pixi run datalad rerun ESTIMATE_RUN
 pixi run verify
-pixi run datalad diff --from comparison-base --to HEAD
 pixi run git diff comparison-base -- output/distance_intervals.csv output/distance_summary.json
 ```
 
-Pixi prepares the environment from this branch's specification when the recorded command starts.
-The observations and numerical script are unchanged.
-The verification task checks the method and recomputes the newly saved results; comparing with `comparison-base` answers whether the dependency selection affected the original results.
-For a numerical difference, choose a tolerance appropriate to the scientific question before judging its importance.
+The recorded command launches Pixi with the `analysis` environment, so it uses the dependency selection now saved on this branch.
+The observations and calculation script are unchanged.
+The verification task checks the method and reproduces the newly saved results; the final diff compares those results with the original analysis.
+Agreement is useful evidence that this dependency change preserves the tested calculation, while a difference gives us something specific to investigate.
 
-DataLad may have no new output commit to save when a replay produces identical files.
-The saved change to the environment still identifies the proposed comparison, but unchanged output alone does not establish that different packages were installed: check the lockfile selection too.
-Pixi can reuse cached packages, and the recorded calculation uses saved measurements, so this experiment needs neither another archive query nor a figure rebuild.
+Pixi can reuse downloaded packages when preparing environments, and DataLad lets us repeat the numerical step using the saved measurements.
+We can therefore explore a software change without reacquiring data or rebuilding the figure at every iteration.
 
-```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-test -z "$(git diff comparison-base -- code/ raw/ inputs/gaia output/distances.csv)"
-```
+## Return to an earlier result
 
-## Recover the reported figure
+The preceding experiments apply a recorded procedure to a changed project.
+Recovering an earlier result means selecting its saved inputs, code, and environment specification together.
+Use a separate clone so that this reconstruction has its own installed environments and leaves your experimental branches available.
 
-So far we have applied earlier commands to a changed project.
-Recovering a reported result means selecting the saved inputs, code, and environment specification together.
-Use a separate clone so this reconstruction has its own environments and leaves the comparison branches available:
+In that clone, select the original figure run and initialize its pinned input dataset before launching the replay:
 
 ```sh
-# pragma: testrun comparisons
-pixi run git clone --recurse-submodules . ../gaia-recovery
-cd ../gaia-recovery
-pixi run git switch --detach "$figure_run"
-pixi run git submodule update --init --recursive
+pixi exec --spec git -- git switch --detach FIGURE_RUN
+pixi exec --spec git -- git submodule update --init --recursive
+pixi run datalad rerun --onto= --branch recover-figure FIGURE_RUN
+pixi run git diff FIGURE_RUN -- figures/
 ```
 
-```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-git config user.name "Demo User"
-git config user.email "demo@example.com"
-```
+For this single run, `--onto=` starts from the parent of the figure commit, where its input table, code, and environment specifications were already saved.
+DataLad repeats the plotting command on a new branch.
+An empty diff means that the regenerated figure files match the recorded files byte for byte.
+The Gaia walkthrough checks this on the same platform; comparisons across platforms may need a different criterion.
 
-Ask DataLad to start from the state just before the original figure run, and replay it on a new branch:
+{{< detail title="Why the environment is selected inside the recorded command" >}} The Gaia records include `pixi run --environment plotting --locked -- python code/plot_distances.py ...` rather than relying only on the environment that launched DataLad.
+When DataLad selects the state to replay, that inner Pixi invocation reads the manifest and lockfile from the selected state before running the script.
+`--locked` requires those two files to agree.
+A Python process that was already running would not change its installed dependencies just because Git checked out another revision.
 
-```sh
-# pragma: testrun comparisons
-pixi run datalad rerun --onto= --branch recover-figure "$figure_run"
-pixi run datalad diff --from "$figure_run" --to HEAD
-```
-
-For this single computation, `--onto=` selects the parent of the figure commit, where its interval table, script, and environment specifications were already saved.
-The new branch retains the recovered computation without replacing the original history.
-An empty diff confirms that the recovered files match the recorded state.
-The executable example checks the figure files byte for byte on the same platform; cross-platform comparisons may require a different criterion.
-
-{{< detail title="How replay selects the environment" >}} The recorded command contains `pixi run --environment plotting --locked -- python code/plot_distances.py ...`.
-DataLad selects the project state first; that inner Pixi invocation then reads the selected manifest and lockfile before launching Python.
-`--locked` requires those specifications to agree.
-A running Python process would not change its installed dependencies merely because Git checked out another revision.
-
-This example replays one figure run whose inputs were already saved.
-A range of runs can include intermediate code changes and different subdatasets; `--onto` does not itself restore subdataset checkouts.
+This recipe recovers one figure run whose inputs were saved beforehand.
+Replaying a sequence can also involve intermediate code changes and subdatasets; DataLad's `--onto` option does not itself restore subdataset checkouts.
 See the [DataLad rerun reference](https://docs.datalad.org/en/stable/generated/man/datalad-rerun.html) for selecting ranges and alternative starting points.
-Recreating an environment requires a compatible host and access to the selected packages. {{< /detail >}}
+Recreating an environment also requires a compatible host and access to the selected packages. {{< /detail >}}
 
-```sh
-# pragma: testrun comparisons
-# pragma: render hidden
-test -z "$(git diff "$figure_run" -- figures/)"
-test -z "$(git status --porcelain)"
-```
-
-The research object's history now supports more than recovery: it provides procedures and comparison points for further analysis.
-DataLad makes those procedures inspectable and executable; Pixi makes their software selections practical to recreate.
-Keeping the choices together helps a collaborator understand what changed, check the result, and build on the comparison.
+The useful outcome is a comparison we can explain: what changed, what stayed fixed, and what happened to the result.
+With those choices retained in the research object, a collaborator can examine our reasoning, repeat the comparison, or use one of its branches as the starting point for further work.
