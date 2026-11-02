@@ -12,3 +12,5 @@ stamped-examples.md
 stamped-examples.pdf
 .cache
 uv.lock
+
+.pixi/

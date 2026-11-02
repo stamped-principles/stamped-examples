@@ -899,3 +899,8 @@ Each one addressed a specific failure mode: "I can't remember how to run this," 
 
 The STAMPED properties gave us a vocabulary for those failure modes and a way to check our progress.
 Not every project needs every step, but knowing the spectrum makes it easier to decide what's worth doing next.
+
+## Continue with Pixi and DataLad
+
+[Reusing the Gaia analysis with Pixi and DataLad]({{< ref "examples/pixi-stellar-distance-walkthrough" >}}) starts from this completed project.
+It brings task execution and environment selection into one configuration, then explores what to reuse, rerun, and record when changing the sample or dependencies.

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Both Pages and Netlify load checkpoints published by materialize_examples.
+set -eu
+fetch_maps() {
+    git fetch --no-tags "$1" \
+        '+refs/heads/examples/*:refs/remotes/origin/examples/*' || return 1
+    git fetch --no-tags "$1" \
+        '+refs/notes/materialize-step-map:refs/notes/materialize-step-map'
+}
+# Forks may not carry the published branches or notes. Read the upstream maps.
+if ! fetch_maps origin || ! git show-ref --verify --quiet \
+    refs/remotes/origin/examples/pixi-stellar-distance-walkthrough/full-build/analysis; then
+    fetch_maps https://github.com/stamped-principles/stamped-examples.git
+fi
+git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/examples/ |
+while IFS= read -r branch; do
+    git update-ref "refs/heads/$branch" "refs/remotes/origin/$branch"
+done
+python3 scripts/materialize_examples --export-data-from-notes

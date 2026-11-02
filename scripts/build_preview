@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+sh scripts/load_example_data
+hugo --gc --minify -b "$1"

@@ -694,3 +694,52 @@ class TestDematerialize:
             capture_output=True, text=True,
         )
         assert result.stdout.strip() == ""
+
+
+def test_script_hash_tracks_external_source(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "setup.py"
+    source.write_text("print('first')\n")
+    code = "# pragma: source setup.py\npython setup.py\n"
+    before = materialize_mod.script_hash(code)
+    source.write_text("print('updated')\n")
+    assert materialize_mod.script_hash(code) != before
+
+
+def test_script_hash_tracks_submodule_revision(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "gaia").mkdir()
+    (tmp_path / "gaia/.git").write_text("gitdir: unused-for-this-test\n")
+    code = "# pragma: submodule gaia\n"
+    with patch.object(materialize_mod.subprocess, "check_output", return_value="a" * 40):
+        before = materialize_mod.script_hash(code)
+    with patch.object(materialize_mod.subprocess, "check_output", return_value="b" * 40):
+        assert materialize_mod.script_hash(code) != before
+
+
+def test_script_hash_tracks_source_directory_without_builds_or_nested_repo(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    subprocess.run(["git", "init", "-q"], check=True)
+    (tmp_path / ".gitignore").write_text(".pixi/\n__pycache__/\n")
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    script = bundle / "analysis.py"
+    script.write_text("first\n")
+    code = "# pragma: source bundle\n"
+    before = materialize_mod.script_hash(code)
+    script.write_text("second\n")
+    changed = materialize_mod.script_hash(code)
+    assert changed != before
+    extra = bundle / "new.py"
+    extra.write_text("new source\n")
+    assert materialize_mod.script_hash(code) != changed
+    extra.unlink()
+    assert materialize_mod.script_hash(code) == changed
+    ignored = bundle / ".pixi"
+    ignored.mkdir()
+    (ignored / "installed").write_text("environment\n")
+    nested = bundle / "gaia"
+    nested.mkdir()
+    subprocess.run(["git", "init", "-q", str(nested)], check=True)
+    (nested / "input.csv").write_text("nested dataset\n")
+    assert materialize_mod.script_hash(code) == changed

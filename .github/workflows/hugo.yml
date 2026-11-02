@@ -44,13 +44,8 @@ jobs:
       - name: Fetch theme submodule
         run: git submodule update --init themes/congo
 
-      - name: Fetch materialized example branches and step-map notes
-        run: |
-          git fetch origin 'refs/heads/examples/*:refs/heads/examples/*' || true
-          git fetch origin 'refs/notes/materialize-step-map:refs/notes/materialize-step-map' || true
-
-      - name: Export step maps to data/ for Hugo
-        run: python3 scripts/materialize_examples --export-data-from-notes
+      - name: Load published example checkpoints
+        run: sh scripts/load_example_data
 
       - name: Setup Pages
         id: pages

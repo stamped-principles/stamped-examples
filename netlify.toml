@@ -3,7 +3,7 @@
 
 [build]
   publish = "public"
-  command = "hugo --gc --minify -b $URL"
+  command = "sh scripts/build_preview $URL"
 
 [build.environment]
   HUGO_VERSION = "0.153.0"
@@ -12,10 +12,10 @@
 
 # Override baseURL for deploy previews so links/assets resolve correctly.
 [context.deploy-preview]
-  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
+  command = "sh scripts/build_preview $DEPLOY_PRIME_URL"
 
 [context.branch-deploy]
-  command = "hugo --gc --minify -b $DEPLOY_PRIME_URL"
+  command = "sh scripts/build_preview $DEPLOY_PRIME_URL"
 
 # Allow cross-origin SRI checks.  Netlify serves each deploy at multiple
 # URLs (commit-hash, deploy-preview alias, main site).  The Congo theme
