@@ -271,8 +271,7 @@ To retain an exploratory run as part of the research object's provenance, wrap i
 
 Using Pixi and DataLad together gives us flexibility to explore an analysis with different environments, code, or data while retaining a record of what changed.
 For example, we could test a newer numerical library against the same observations, or apply the same method to an updated Gaia sample.
-For each comparison, we can hold the other inputs fixed and use the recorded command to repeat the affected step.
-The saved project revisions also let us return to the code, data, and environment specifications used for an earlier result.
+The [next example]({{< ref "examples/gaia-recompute-history" >}}) uses DataLad's command-line tools to inspect these computations, compare deliberate changes, and recover a historical result.
 
 We can now see the value of working with a STAMPED research object: the original analysis supported this extension, and the work we have produced can itself be reused or extended.
 Pixi makes the software and procedures convenient to run; DataLad keeps the resulting computations connected to their inputs and methods.
